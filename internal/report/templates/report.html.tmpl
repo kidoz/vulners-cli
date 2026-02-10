@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vulners Scan Report</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; padding: 2rem; }
+  h1 { margin-bottom: 0.5rem; }
+  .meta { color: #666; margin-bottom: 2rem; }
+  .summary { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+  .card { background: #fff; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,.1); min-width: 120px; text-align: center; }
+  .card .num { font-size: 2rem; font-weight: bold; }
+  .card .label { font-size: 0.85rem; color: #666; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  th { background: #2d3748; color: #fff; padding: 0.75rem 1rem; text-align: left; cursor: pointer; user-select: none; }
+  th:hover { background: #4a5568; }
+  td { padding: 0.75rem 1rem; border-bottom: 1px solid #e2e8f0; }
+  tr:hover td { background: #f7fafc; }
+  .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+  .badge-critical { background: #fed7d7; color: #c53030; }
+  .badge-high { background: #feebc8; color: #c05621; }
+  .badge-medium { background: #fefcbf; color: #975a16; }
+  .badge-low { background: #c6f6d5; color: #276749; }
+  .badge-unknown { background: #e2e8f0; color: #4a5568; }
+</style>
+</head>
+<body>
+<h1>Vulners Scan Report</h1>
+<p class="meta">Target: {{.Target}} | Schema: {{.SchemaVersion}}</p>
+
+<div class="summary">
+  <div class="card"><div class="num">{{.Summary.ComponentCount}}</div><div class="label">Components</div></div>
+  <div class="card"><div class="num">{{.Summary.FindingCount}}</div><div class="label">Findings</div></div>
+  <div class="card"><div class="num" style="color:#c53030">{{.Summary.Critical}}</div><div class="label">Critical</div></div>
+  <div class="card"><div class="num" style="color:#c05621">{{.Summary.High}}</div><div class="label">High</div></div>
+  <div class="card"><div class="num" style="color:#975a16">{{.Summary.Medium}}</div><div class="label">Medium</div></div>
+  <div class="card"><div class="num" style="color:#276749">{{.Summary.Low}}</div><div class="label">Low</div></div>
+</div>
+
+{{if .Findings}}
+<table id="findings">
+<thead>
+  <tr>
+    <th onclick="sortTable(0)">Vuln ID</th>
+    <th onclick="sortTable(1)">Severity</th>
+    <th onclick="sortTable(2)">CVSS</th>
+    <th onclick="sortTable(3)">Component</th>
+    <th onclick="sortTable(4)">Fix</th>
+  </tr>
+</thead>
+<tbody>
+{{range .Findings}}
+  <tr>
+    <td>{{.VulnID}}</td>
+    <td><span class="badge badge-{{.Severity}}">{{.Severity}}</span></td>
+    <td>{{printf "%.1f" .CVSS}}</td>
+    <td>{{.ComponentRef}}</td>
+    <td>{{.Fix}}</td>
+  </tr>
+{{end}}
+</tbody>
+</table>
+{{else}}
+<p>No findings.</p>
+{{end}}
+
+<script>
+function sortTable(col) {
+  var t = document.getElementById("findings");
+  if (!t) return;
+  var rows = Array.from(t.tBodies[0].rows);
+  var asc = t.dataset.sortCol == col ? t.dataset.sortDir !== "asc" : true;
+  rows.sort(function(a, b) {
+    var x = a.cells[col].textContent.trim();
+    var y = b.cells[col].textContent.trim();
+    var nx = parseFloat(x), ny = parseFloat(y);
+    if (!isNaN(nx) && !isNaN(ny)) return asc ? nx - ny : ny - nx;
+    return asc ? x.localeCompare(y) : y.localeCompare(x);
+  });
+  rows.forEach(function(r) { t.tBodies[0].appendChild(r); });
+  t.dataset.sortCol = col;
+  t.dataset.sortDir = asc ? "asc" : "desc";
+}
+</script>
+</body>
+</html>

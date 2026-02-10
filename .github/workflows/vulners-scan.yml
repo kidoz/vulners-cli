@@ -1,0 +1,81 @@
+name: Vulners Security Scan
+
+on:
+  workflow_call:
+    inputs:
+      scan-path:
+        description: 'Path to scan (default: repository root)'
+        required: false
+        default: '.'
+        type: string
+      fail-on:
+        description: 'Fail on severity level (low, medium, high, critical)'
+        required: false
+        default: ''
+        type: string
+      output-format:
+        description: 'Output format (json, table, sarif)'
+        required: false
+        default: 'sarif'
+        type: string
+      vulners-version:
+        description: 'Vulners CLI version to install'
+        required: false
+        default: 'latest'
+        type: string
+    secrets:
+      vulners-api-key:
+        description: 'Vulners API key'
+        required: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.24'
+
+      - name: Install Vulners CLI
+        env:
+          VULNERS_VERSION: ${{ inputs.vulners-version }}
+        run: |
+          if [ "$VULNERS_VERSION" = "latest" ]; then
+            go install github.com/kidoz/vulners-cli/cmd/vulners@latest
+          else
+            go install "github.com/kidoz/vulners-cli/cmd/vulners@${VULNERS_VERSION}"
+          fi
+
+      - name: Run Vulners Scan
+        env:
+          VULNERS_API_KEY: ${{ secrets.vulners-api-key }}
+          SCAN_PATH: ${{ inputs.scan-path }}
+          FAIL_ON: ${{ inputs.fail-on }}
+          OUTPUT_FORMAT: ${{ inputs.output-format }}
+        run: |
+          set -- scan repo "$SCAN_PATH" --output "$OUTPUT_FORMAT"
+          if [ -n "$FAIL_ON" ]; then
+            set -- "$@" --fail-on "$FAIL_ON"
+          fi
+          if [ "$OUTPUT_FORMAT" = "sarif" ]; then
+            # Exit code 1 (findings found) is expected; real failures use exit 2+.
+            vulners "$@" > results.sarif || EXIT_CODE=$?
+            if [ "${EXIT_CODE:-0}" -gt 1 ]; then
+              echo "::error::Vulners scan failed with exit code $EXIT_CODE"
+              exit "$EXIT_CODE"
+            fi
+          else
+            vulners "$@"
+          fi
+
+      - name: Upload SARIF
+        if: always() && inputs.output-format == 'sarif' && hashFiles('results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@b5ebac6f4c00c8ccddb7cdcd45fdb248329f808a # v3
+        with:
+          sarif_file: results.sarif
+          category: vulners

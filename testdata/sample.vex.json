@@ -1,0 +1,21 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://example.com/vex/test",
+  "author": "test",
+  "timestamp": "2024-01-01T00:00:00Z",
+  "statements": [
+    {
+      "vulnerability": { "name": "CVE-2021-44228" },
+      "status": "not_affected",
+      "justification": "component_not_present"
+    },
+    {
+      "vulnerability": { "name": "CVE-2023-0001" },
+      "status": "fixed"
+    },
+    {
+      "vulnerability": { "name": "CVE-2023-0002" },
+      "status": "affected"
+    }
+  ]
+}

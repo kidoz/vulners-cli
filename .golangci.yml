@@ -1,0 +1,54 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    # Essential
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    # Error handling
+    - errname
+    # Style & modernization
+    - revive
+    - misspell
+    # Security
+    - gosec
+    # Complexity
+    - gocyclo
+    - funlen
+    # Testing
+    - thelper
+    - tparallel
+
+  settings:
+    gocyclo:
+      min-complexity: 15
+    funlen:
+      lines: 80
+      statements: 50
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
+        - name: exported
+          disabled: true
+    gosec:
+      excludes:
+        - G304 # file inclusion via variable — expected for CLI tool
+
+  exclusions:
+    paths:
+      - vendor
+      - testdata
+
+formatters:
+  enable:
+    - goimports
+    - gofumpt
+  exclusions:
+    paths:
+      - vendor
+      - testdata
