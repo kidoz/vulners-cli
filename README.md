@@ -61,6 +61,10 @@ vulners cpe nginx --limit 20               # vendor defaults to product name
 vulners stix CVE-2021-44228                # auto-detects CVE prefix
 vulners stix RHSA-2021:5137                # by bulletin ID
 vulners stix CVE-2021-44228 --by-cve       # explicit CVE lookup
+
+# Autocomplete and suggestions
+vulners autocomplete "apache log"          # search query autocomplete
+vulners suggest type                       # field value suggestions
 ```
 
 ### Audit commands
@@ -97,7 +101,79 @@ vulners scan sbom sbom.spdx.json --format spdx
 
 # Scan a container image (requires syft)
 vulners scan image alpine:3.18
+vulners scan image ubuntu:22.04 --distro ubuntu/22.04   # override distro detection
 ```
+
+Image scanning automatically detects the OS distribution and uses specialized APIs for accurate matching:
+- **OS packages** (apk/deb/rpm) are matched via the `LinuxAudit` API with distro-aware version comparison
+- **Application packages** are matched via the `SBOMAudit` API with CVSS, EPSS, AIScore, and exploit enrichment
+- Output includes `imageMeta` with distro info, package breakdown, and audit mode
+
+### VScanner (remote scanning)
+
+```bash
+# Manage projects
+vulners vscan project list
+vulners vscan project create --name "Production"
+vulners vscan project get <project-id>
+
+# Manage scan tasks
+vulners vscan task list <project-id>
+vulners vscan task create <project-id> --name "Web Servers" --targets 10.0.0.0/24 --scan-type normal
+vulners vscan task start <project-id> <task-id>
+vulners vscan task stop <project-id> <task-id>
+
+# Access results
+vulners vscan result list <project-id>
+vulners vscan result stats <project-id> <result-id>
+vulners vscan result hosts <project-id> <result-id>
+vulners vscan result vulns <project-id> <result-id>
+vulners vscan result export <project-id> <result-id> --format pdf
+
+# License info
+vulners vscan license
+```
+
+### Webhooks & subscriptions
+
+```bash
+# Webhooks — get notified when new bulletins match a query
+vulners webhook list
+vulners webhook add "type:exploit AND apache"
+vulners webhook read <webhook-id>
+vulners webhook enable <webhook-id>
+vulners webhook disable <webhook-id>
+vulners webhook delete <webhook-id>
+
+# Subscriptions — managed alert rules
+vulners subscription list
+vulners subscription create --name "Log4j alerts" --type email --query "log4j"
+vulners subscription get <subscription-id>
+vulners subscription enable <subscription-id>
+vulners subscription disable <subscription-id>
+vulners subscription delete <subscription-id>
+```
+
+### Reports
+
+```bash
+# Account-level vulnerability reports
+vulners report summary              # aggregated vulnerability summary
+vulners report vulns --limit 50     # list known vulnerabilities
+vulners report hosts                # host vulnerability status
+vulners report scans                # scan history
+vulners report ips                  # IP-level summary
+```
+
+### MCP server
+
+Run vulners-cli as a [Model Context Protocol](https://modelcontextprotocol.io/) server for AI agent integration:
+
+```bash
+vulners mcp
+```
+
+Exposes tools for search, CVE lookup, CPE search, SBOM audit, and health checks to MCP-compatible clients (Claude Desktop, Cursor, etc.).
 
 ### Offline mode
 
@@ -118,6 +194,15 @@ vulners cve CVE-2021-44228 --offline
 vulners search "log4j" --offline
 ```
 
+### Diagnostics
+
+```bash
+# Check environment health
+vulners doctor
+```
+
+Verifies API key, network connectivity, offline cache, syft, and Go installation. Use `--output json` for machine-readable results.
+
 ## Output formats
 
 ```bash
@@ -135,9 +220,35 @@ vulners scan repo . --output html
 
 # CycloneDX VEX
 vulners scan repo . --output cyclonedx
+
+# Write to file instead of stdout
+vulners scan repo . --output sarif --output-file results.sarif
 ```
 
 > **Note:** `sarif`, `html`, and `cyclonedx` formats are only available for scan commands. Intel, audit, STIX, and offline commands support `json` and `table`.
+
+## Agent & CI/CD mode
+
+```bash
+# Machine-friendly mode: JSON, quiet, deterministic ordering, no color
+vulners scan repo . --agent
+
+# Select specific JSON fields
+vulners scan repo . --fields findings.vulnID,findings.severity,summary
+
+# Summary + top 5 findings only (smaller payloads for LLM context)
+vulners scan repo . --summary-only
+
+# Limit findings count (preserves total count in output)
+vulners scan repo . --max-findings 20
+
+# Dry-run: show what a scan would do
+vulners scan repo . --plan
+
+# Command specification for tool integration
+vulners spec
+vulners schema scan
+```
 
 ## Policy & exit codes
 
@@ -165,12 +276,19 @@ vulners scan repo . --vex vex.json
 | Flag | Description |
 |---|---|
 | `--output` | Output format: `json`, `table`, `sarif`, `html`, `cyclonedx` (default: `json`) |
+| `--output-file` | Write output to file instead of stdout |
 | `--quiet` / `-q` | Suppress non-error output |
 | `--verbose` / `-v` | Enable debug output |
 | `--offline` | Use offline database only |
+| `--agent` | Machine-friendly mode: JSON output, quiet, deterministic sort, no color |
+| `--no-color` | Disable colored log output |
 | `--fail-on` | Fail with exit code 1 at severity: `low`, `medium`, `high`, `critical` |
 | `--ignore` | CVE IDs to ignore (repeatable) |
 | `--vex` | Path to an OpenVEX document for finding suppression |
+| `--fields` | Select JSON fields to include in output (repeatable, JSON only) |
+| `--summary-only` | Output summary and top findings only |
+| `--max-findings` | Maximum findings in output; 0 = unlimited (default: `0`) |
+| `--plan` | Show what a scan would do without executing it |
 
 ## Configuration
 
@@ -222,10 +340,10 @@ just clean
 cmd/vulners/main.go        Fx wiring, Kong parse, logger init
 internal/cmd/              Kong command structs
 internal/config/           Koanf v2 config loader
-internal/intel/            go-vulners wrapper + govulncheck
+internal/intel/            go-vulners wrapper + govulncheck + vscanner
 internal/cache/            SQLite offline cache (modernc.org/sqlite)
-internal/inventory/        go.mod + CycloneDX/SPDX parsers
-internal/matcher/          Component normalization + vuln matching
+internal/inventory/        go.mod, npm, pip, CycloneDX/SPDX, syft parsers
+internal/matcher/          Component normalization + vuln matching + enrichment
 internal/policy/           --fail-on / --ignore / VEX filtering + exit codes
 internal/report/           JSON, table, SARIF, HTML, CycloneDX output
 internal/model/            Component, Finding, ExitCode, SeverityLevel
