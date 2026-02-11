@@ -99,7 +99,7 @@ vulners scan sbom sbom.json --format cyclonedx
 # Scan an SPDX SBOM
 vulners scan sbom sbom.spdx.json --format spdx
 
-# Scan a container image (requires syft)
+# Scan a container image
 vulners scan image alpine:3.18
 vulners scan image ubuntu:22.04 --distro ubuntu/22.04   # override distro detection
 ```
@@ -201,7 +201,7 @@ vulners search "log4j" --offline
 vulners doctor
 ```
 
-Verifies API key, network connectivity, offline cache, syft, and Go installation. Use `--output json` for machine-readable results.
+Verifies API key, network connectivity, offline cache, and Go installation. Use `--output json` for machine-readable results.
 
 ## Output formats
 
