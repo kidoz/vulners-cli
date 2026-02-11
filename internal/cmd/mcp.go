@@ -148,12 +148,11 @@ func registerScanRepoTool(server *mcp.Server, deps *Deps, store cache.Store, log
 func registerDoctorTool(server *mcp.Server, deps *Deps, store cache.Store) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "doctor",
-		Description: "Run environment health checks. Verifies API key, offline database, syft, Go version, and network connectivity.",
+		Description: "Run environment health checks. Verifies API key, offline database, Go version, and network connectivity.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
 		var checks []CheckResult
 		checks = append(checks, checkAPIKey(deps))
 		checks = append(checks, checkOfflineDB(ctx, store))
-		checks = append(checks, checkSyft())
 		checks = append(checks, checkGo())
 		checks = append(checks, checkNetwork(ctx, deps))
 

@@ -14,7 +14,7 @@ import (
 	"github.com/kidoz/vulners-cli/internal/model"
 )
 
-// ScanImageCmd scans a container image (requires syft for SBOM generation).
+// ScanImageCmd scans a container image and generates an SBOM.
 type ScanImageCmd struct {
 	Image  string `arg:"" help:"Image reference (e.g. alpine:3.18, ./image.tar)"`
 	Distro string `help:"Override auto-detected distro (format: name/version, e.g. alpine/3.18)" name:"distro" default:""`

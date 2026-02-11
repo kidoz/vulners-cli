@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"runtime"
 
 	"github.com/kidoz/vulners-cli/internal/cache"
@@ -36,7 +35,6 @@ func (c *DoctorCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cac
 
 	checks = append(checks, checkAPIKey(deps))
 	checks = append(checks, checkOfflineDB(ctx, store))
-	checks = append(checks, checkSyft())
 	checks = append(checks, checkGo())
 	checks = append(checks, checkNetwork(ctx, deps))
 
@@ -111,23 +109,6 @@ func checkOfflineDB(ctx context.Context, store cache.Store) CheckResult {
 		Name:    "offline_db",
 		Status:  "pass",
 		Message: fmt.Sprintf("%d collections synced (%d bulletins)", len(metas), totalCount),
-	}
-}
-
-func checkSyft() CheckResult {
-	path, err := exec.LookPath("syft")
-	if err != nil {
-		return CheckResult{
-			Name:        "syft",
-			Status:      "warn",
-			Message:     "syft not found in PATH",
-			Remediation: "Install syft from https://github.com/anchore/syft (required for image scanning)",
-		}
-	}
-	return CheckResult{
-		Name:    "syft",
-		Status:  "pass",
-		Message: fmt.Sprintf("syft found at %s", path),
 	}
 }
 

@@ -4,18 +4,18 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os/exec"
-	"regexp"
 	"strings"
 
 	cdx "github.com/CycloneDX/cyclonedx-go"
 
+	// Explicitly importing full paths for syft components
+	syftPkg "github.com/anchore/syft/syft"
+	syftFormatPkg "github.com/anchore/syft/syft/format"
+	syftFormatCdxjsonPkg "github.com/anchore/syft/syft/format/cyclonedxjson"
+	syftSbomPkg "github.com/anchore/syft/syft/sbom"
+
 	"github.com/kidoz/vulners-cli/internal/model"
 )
-
-// validImageRef matches valid Docker image references and local file paths:
-// [registry/]name[:tag][@digest] or ./path/to/file — no shell metacharacters.
-var validImageRef = regexp.MustCompile(`^[a-zA-Z0-9./][a-zA-Z0-9._/:@\-]*$`)
 
 // DistroInfo holds the detected OS distribution from a container image SBOM.
 type DistroInfo struct {
@@ -38,31 +38,43 @@ func (c *SyftCollector) CollectSBOM(ctx context.Context, imageRef string) (*SBOM
 	if imageRef == "" {
 		return nil, fmt.Errorf("image reference must not be empty")
 	}
-	if !validImageRef.MatchString(imageRef) {
-		return nil, fmt.Errorf("invalid image reference %q: contains disallowed characters", imageRef)
+
+	// Use syft library to get source and create SBOM
+	src, err := syftPkg.GetSource(ctx, imageRef, &syftPkg.GetSourceConfig{})
+	if err != nil {
+		return nil, fmt.Errorf("error getting syft source for image %q: %w", imageRef, err)
 	}
 
-	if _, err := exec.LookPath("syft"); err != nil {
-		return nil, fmt.Errorf("syft not found in PATH; install from https://github.com/anchore/syft")
+	// Create the SBOM with default configuration
+	sbom, err := syftPkg.CreateSBOM(ctx, src, syftPkg.DefaultCreateSBOMConfig())
+	if err != nil {
+		return nil, fmt.Errorf("error creating SBOM for image %q: %w", imageRef, err)
 	}
 
-	var stdout, stderr bytes.Buffer
-	cmd := exec.CommandContext(ctx, "syft", imageRef, "-o", "cyclonedx-json", "--quiet")
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("syft failed: %w: %s", err, stderr.String())
+	// Find the CycloneDX JSON encoder
+	var cyclonedxEncoder syftSbomPkg.FormatEncoder
+	for _, encoder := range syftFormatPkg.Encoders() {
+		if encoder.ID() == syftFormatCdxjsonPkg.ID {
+			cyclonedxEncoder = encoder
+			break
+		}
 	}
 
-	raw := make([]byte, stdout.Len())
-	copy(raw, stdout.Bytes())
+	if cyclonedxEncoder == nil {
+		return nil, fmt.Errorf("CycloneDX JSON encoder not found in syft library")
+	}
 
-	result, err := parseCycloneDXBOM(bytes.NewReader(raw))
+	// Encode the syft.SBOM to CycloneDX JSON
+	var rawSBOM bytes.Buffer
+	if err := cyclonedxEncoder.Encode(&rawSBOM, *sbom); err != nil {
+		return nil, fmt.Errorf("error encoding SBOM to CycloneDX JSON: %w", err)
+	}
+
+	result, err := parseCycloneDXBOM(bytes.NewReader(rawSBOM.Bytes()))
 	if err != nil {
 		return nil, err
 	}
-	result.RawSBOM = raw
+	result.RawSBOM = rawSBOM.Bytes()
 
 	return result, nil
 }

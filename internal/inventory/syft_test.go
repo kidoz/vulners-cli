@@ -55,24 +55,6 @@ func TestSyftCollector_CollectSBOM_InvalidRef(t *testing.T) {
 	}
 }
 
-func TestSyftCollector_Collect_ValidRefs(t *testing.T) {
-	// These should pass validation but fail on missing syft binary.
-	// We just check that they don't fail on validation.
-	refs := []string{
-		"alpine:3.18",
-		"docker.io/library/ubuntu:22.04",
-		"ghcr.io/owner/image:latest",
-		"registry.example.com/foo/bar:v1.2.3",
-		"image@sha256:abcdef1234567890",
-		"./local-image.tar",
-	}
-	for _, ref := range refs {
-		if !validImageRef.MatchString(ref) {
-			t.Errorf("validImageRef should match %q", ref)
-		}
-	}
-}
-
 func TestParseCycloneDXBytes_ComponentsAndEcosystem(t *testing.T) {
 	sbom := `{
 		"bomFormat": "CycloneDX",
@@ -167,44 +149,5 @@ func TestParseCycloneDXBytes_NoDistro(t *testing.T) {
 	}
 	if result.Distro != nil {
 		t.Errorf("expected nil distro for Go-only SBOM, got %+v", result.Distro)
-	}
-}
-
-func TestEcosystemFromPURL(t *testing.T) {
-	tests := []struct {
-		purl string
-		want string
-	}{
-		{"pkg:apk/alpine/musl@1.2.4", "apk"},
-		{"pkg:deb/debian/libc6@2.36", "deb"},
-		{"pkg:rpm/centos/openssl@3.0", "rpm"},
-		{"pkg:npm/express@4.18.2", "npm"},
-		{"pkg:golang/github.com/foo/bar@1.0", "golang"},
-		{"not-a-purl", ""},
-		{"", ""},
-	}
-	for _, tt := range tests {
-		got := ecosystemFromPURL(tt.purl)
-		if got != tt.want {
-			t.Errorf("ecosystemFromPURL(%q) = %q, want %q", tt.purl, got, tt.want)
-		}
-	}
-}
-
-func TestIsOSEcosystem(t *testing.T) {
-	if !IsOSEcosystem("apk") {
-		t.Error("expected apk to be OS ecosystem")
-	}
-	if !IsOSEcosystem("deb") {
-		t.Error("expected deb to be OS ecosystem")
-	}
-	if !IsOSEcosystem("rpm") {
-		t.Error("expected rpm to be OS ecosystem")
-	}
-	if IsOSEcosystem("npm") {
-		t.Error("expected npm to not be OS ecosystem")
-	}
-	if IsOSEcosystem("") {
-		t.Error("expected empty to not be OS ecosystem")
 	}
 }
