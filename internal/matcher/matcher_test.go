@@ -220,7 +220,7 @@ func TestMatcher_Match_WithResults(t *testing.T) {
 	}
 }
 
-func TestMatcher_Match_SearchError(t *testing.T) {
+func TestMatcher_Match_SearchError_AllFail(t *testing.T) {
 	client := &mockClient{
 		searchFn: func(context.Context, string, int, int) (*intel.SearchResult, error) {
 			return nil, fmt.Errorf("api error")
@@ -228,14 +228,42 @@ func TestMatcher_Match_SearchError(t *testing.T) {
 	}
 
 	m := NewMatcher(client, slog.Default())
-	findings, err := m.Match(context.Background(), []model.Component{
+	_, err := m.Match(context.Background(), []model.Component{
 		{Name: "pkg", Version: "1.0"},
 	})
-	if err != nil {
-		t.Fatalf("Match() should not return error for individual failures: %v", err)
+	if err == nil {
+		t.Fatal("Match() should return error when all lookups fail")
 	}
-	if len(findings) != 0 {
-		t.Errorf("expected 0 findings on error, got %d", len(findings))
+	if !strings.Contains(err.Error(), "all 1 component lookups failed") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestMatcher_Match_SearchError_PartialFail(t *testing.T) {
+	callCount := 0
+	client := &mockClient{
+		searchFn: func(_ context.Context, _ string, _, _ int) (*intel.SearchResult, error) {
+			callCount++
+			if callCount == 1 {
+				return nil, fmt.Errorf("api error")
+			}
+			return &intel.SearchResult{
+				Total:     1,
+				Bulletins: []vulners.Bulletin{{ID: "CVE-2023-0001", CVSS: &vulners.CVSS{Score: 5.0}}},
+			}, nil
+		},
+	}
+
+	m := NewMatcher(client, slog.Default())
+	findings, err := m.Match(context.Background(), []model.Component{
+		{Name: "pkg1", Version: "1.0"},
+		{Name: "pkg2", Version: "2.0"},
+	})
+	if err != nil {
+		t.Fatalf("Match() should not error when some lookups succeed: %v", err)
+	}
+	if len(findings) != 1 {
+		t.Errorf("expected 1 finding from partial success, got %d", len(findings))
 	}
 }
 
@@ -273,12 +301,10 @@ func TestMatcher_Match_SkipCount(t *testing.T) {
 		{Name: "pkg3", Version: "3.0"},
 	}
 
-	findings, err := m.Match(context.Background(), components)
-	if err != nil {
-		t.Fatalf("Match() error: %v", err)
-	}
-	if len(findings) != 0 {
-		t.Errorf("expected 0 findings, got %d", len(findings))
+	_, err := m.Match(context.Background(), components)
+	// All 3 failed → error expected.
+	if err == nil {
+		t.Fatal("Match() should return error when all lookups fail")
 	}
 
 	logOutput := buf.String()
@@ -299,12 +325,12 @@ func TestBuildQuery(t *testing.T) {
 		{
 			name: "with CPE",
 			comp: model.Component{CPE: "cpe:/a:vendor:product:1.0"},
-			want: "affectedSoftware.cpe:cpe:/a:vendor:product:1.0",
+			want: `affectedSoftware.cpe:"cpe:/a:vendor:product:1.0"`,
 		},
 		{
 			name: "with name and version",
 			comp: model.Component{Name: "log4j", Version: "2.14.0"},
-			want: "log4j 2.14.0",
+			want: `affectedSoftware.name:"log4j" AND affectedSoftware.version:"2.14.0" OR log4j 2.14.0`,
 		},
 		{
 			name: "empty",
@@ -315,6 +341,11 @@ func TestBuildQuery(t *testing.T) {
 			name: "name only",
 			comp: model.Component{Name: "log4j"},
 			want: "",
+		},
+		{
+			name: "special chars in name",
+			comp: model.Component{Name: "foo:bar(baz)", Version: "1.0"},
+			want: `affectedSoftware.name:"foo:bar(baz)" AND affectedSoftware.version:"1.0" OR foo\:bar\(baz\) 1.0`,
 		},
 	}
 	for _, tt := range tests {

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -34,11 +35,12 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	// Load YAML config file (optional — missing file is not an error).
+	// Load YAML config file (optional — missing file is not an error,
+	// but a malformed file that exists is).
 	cfgPath := configFilePath()
 	if _, err := os.Stat(cfgPath); err == nil {
 		if err := k.Load(file.Provider(cfgPath), yaml.Parser()); err != nil {
-			slog.Warn("failed to load config file", "path", cfgPath, "error", err)
+			return nil, fmt.Errorf("parsing config file %s: %w", cfgPath, err)
 		}
 	}
 

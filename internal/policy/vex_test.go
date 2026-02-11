@@ -38,3 +38,33 @@ func TestPolicy_FilterWithVEX(t *testing.T) {
 	assert.Equal(t, "CVE-2023-0002", filtered[0].VulnID)
 	assert.Equal(t, "CVE-2023-0003", filtered[1].VulnID)
 }
+
+func TestPolicy_VEX_PrimaryIDTakesPriority(t *testing.T) {
+	p := New("", nil)
+	p.VEXStatuses = map[string]string{
+		"CVE-2024-0001": "affected",     // primary says affected
+		"CVE-2024-9999": "not_affected", // alias says not_affected
+	}
+
+	findings := []model.Finding{
+		{VulnID: "CVE-2024-0001", Severity: "high", Aliases: []string{"CVE-2024-9999"}},
+	}
+
+	filtered := p.Filter(findings)
+	assert.Len(t, filtered, 1, "primary ID 'affected' should NOT be suppressed by alias 'not_affected'")
+	assert.Equal(t, "CVE-2024-0001", filtered[0].VulnID)
+}
+
+func TestPolicy_VEX_AliasSuppressesWhenPrimaryUnknown(t *testing.T) {
+	p := New("", nil)
+	p.VEXStatuses = map[string]string{
+		"GHSA-1234-5678": "fixed", // alias is fixed, primary has no VEX statement
+	}
+
+	findings := []model.Finding{
+		{VulnID: "CVE-2024-0002", Severity: "high", Aliases: []string{"GHSA-1234-5678"}},
+	}
+
+	filtered := p.Filter(findings)
+	assert.Len(t, filtered, 0, "alias 'fixed' should suppress when primary has no VEX statement")
+}

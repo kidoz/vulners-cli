@@ -4,10 +4,15 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/kidoz/vulners-cli/internal/intel"
 	"github.com/kidoz/vulners-cli/internal/model"
 )
+
+// searchLimit is the maximum number of bulletins to fetch per component.
+// High enough to avoid missing vulns for popular packages (e.g. OpenSSL).
+const searchLimit = 100
 
 // Matcher resolves components to vulnerability findings.
 type Matcher struct {
@@ -34,7 +39,7 @@ func (m *Matcher) Match(ctx context.Context, components []model.Component) ([]mo
 
 		m.logger.Debug("querying vulners", "component", comp.Name, "version", comp.Version)
 
-		result, err := m.intel.Search(ctx, query, 20, 0)
+		result, err := m.intel.Search(ctx, query, searchLimit, 0)
 		if err != nil {
 			// Propagate context errors — they signal the caller cancelled or timed out.
 			if ctx.Err() != nil {
@@ -55,15 +60,39 @@ func (m *Matcher) Match(ctx context.Context, components []model.Component) ([]mo
 			"skipped", skipped, "total", len(components))
 	}
 
+	// If every component lookup failed, surface an error instead of
+	// silently returning zero findings (false negative).
+	queried := len(components) - skipped
+	if queried == 0 && len(components) > 0 {
+		return nil, fmt.Errorf("all %d component lookups failed; results would be empty", len(components))
+	}
+
 	return findings, nil
 }
 
+// querySpecialChars are characters that have meaning in Vulners query syntax.
+var querySpecialChars = strings.NewReplacer(
+	`\`, `\\`,
+	`"`, `\"`,
+	`:`, `\:`,
+	`(`, `\(`,
+	`)`, `\)`,
+	`[`, `\[`,
+	`]`, `\]`,
+)
+
 func buildQuery(comp model.Component) string {
 	if comp.CPE != "" {
-		return fmt.Sprintf("affectedSoftware.cpe:%s", comp.CPE)
+		return fmt.Sprintf("affectedSoftware.cpe:%q", comp.CPE)
 	}
 	if comp.Name != "" && comp.Version != "" {
-		return fmt.Sprintf("%s %s", comp.Name, comp.Version)
+		// Quoted field values: characters inside double quotes are literal in
+		// Lucene-like query parsers, so use raw values. Unquoted fallback
+		// needs escaping for special chars.
+		escaped := querySpecialChars.Replace(comp.Name)
+		escapedVer := querySpecialChars.Replace(comp.Version)
+		return fmt.Sprintf("affectedSoftware.name:%q AND affectedSoftware.version:%q OR %s %s",
+			comp.Name, comp.Version, escaped, escapedVer)
 	}
 	return ""
 }

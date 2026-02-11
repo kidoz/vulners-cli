@@ -19,6 +19,8 @@ func (c *CPECmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cache.
 		return err
 	}
 
+	c.Limit = clampLimit(c.Limit)
+
 	w, closer, err := outputWriter(globals)
 	if err != nil {
 		return err

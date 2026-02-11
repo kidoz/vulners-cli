@@ -156,15 +156,28 @@ func scanOfflineComponents(
 		return nil, cache.ErrOfflineDataMissing
 	}
 	var findings []model.Finding
+	var skipped int
 	for _, comp := range components {
 		results, _, err := store.SearchBulletins(ctx, comp.Name+" "+comp.Version, 20, 0)
 		if err != nil {
 			logger.Warn("offline search failed", "component", comp.Name, "error", err)
+			skipped++
 			continue
 		}
 		for _, b := range results {
 			findings = append(findings, matcher.BulletinToFinding(&b, comp.Name+"@"+comp.Version))
 		}
+	}
+
+	if skipped > 0 {
+		logger.Warn("components skipped due to offline search errors",
+			"skipped", skipped, "total", len(components))
+	}
+
+	// If every component lookup failed, surface an error instead of
+	// silently returning zero findings (false negative).
+	if skipped == len(components) && len(components) > 0 {
+		return nil, fmt.Errorf("all %d offline component lookups failed; results would be empty", len(components))
 	}
 
 	// Deduplicate findings by VulnID + ComponentRef.

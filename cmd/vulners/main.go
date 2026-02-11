@@ -246,5 +246,7 @@ func applyConfigFlags(cfg *config.Config, cli *icmd.CLI, lvl *slog.LevelVar) {
 		lvl.Set(slog.LevelError)
 	case cli.Verbose:
 		lvl.Set(slog.LevelDebug)
+	default:
+		lvl.Set(slog.LevelInfo)
 	}
 }

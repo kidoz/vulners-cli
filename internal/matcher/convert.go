@@ -9,7 +9,7 @@ import (
 func BulletinToFinding(b *vulners.Bulletin, componentRef string) model.Finding {
 	severity := "unknown"
 	var cvss float64
-	if b.CVSS3 != nil && b.CVSS3.Score > 0 {
+	if b.CVSS3 != nil {
 		cvss = b.CVSS3.Score
 		severity = model.ScoreSeverity(cvss)
 	} else if b.CVSS != nil {

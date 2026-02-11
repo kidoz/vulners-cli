@@ -8,7 +8,8 @@ import (
 
 // NormalizeComponent prepares a component for vulnerability matching.
 func NormalizeComponent(c model.Component) model.Component {
-	c.Name = strings.ToLower(c.Name)
-	c.Type = strings.ToLower(c.Type)
+	c.Name = strings.ToLower(strings.TrimSpace(c.Name))
+	c.Version = strings.TrimSpace(c.Version)
+	c.Type = strings.ToLower(strings.TrimSpace(c.Type))
 	return c
 }

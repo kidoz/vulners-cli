@@ -20,6 +20,9 @@ func (c *SearchCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cac
 		return err
 	}
 
+	c.Limit = clampLimit(c.Limit)
+	c.Offset = clampOffset(c.Offset)
+
 	w, closer, err := outputWriter(globals)
 	if err != nil {
 		return err

@@ -54,10 +54,15 @@ func vexSuppressed(statuses map[string]string, f model.Finding) bool {
 	if len(statuses) == 0 {
 		return false
 	}
-	// Check VulnID and all aliases.
-	ids := append([]string{f.VulnID}, f.Aliases...)
-	for _, id := range ids {
-		if status, ok := statuses[id]; ok {
+
+	// Primary VulnID takes priority — if it has an explicit status, use it.
+	if status, ok := statuses[f.VulnID]; ok {
+		return status == "not_affected" || status == "fixed"
+	}
+
+	// Fall back to aliases only when the primary ID has no VEX statement.
+	for _, alias := range f.Aliases {
+		if status, ok := statuses[alias]; ok {
 			if status == "not_affected" || status == "fixed" {
 				return true
 			}

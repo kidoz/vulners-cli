@@ -7,8 +7,6 @@ import (
 	"os"
 	"strings"
 
-	cdx "github.com/CycloneDX/cyclonedx-go"
-
 	"github.com/kidoz/vulners-cli/internal/model"
 )
 
@@ -29,37 +27,15 @@ func (c *SBOMCollector) Collect(_ context.Context, target string) ([]model.Compo
 }
 
 func parseCycloneDX(path string) ([]model.Component, error) {
-	f, err := os.Open(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("opening SBOM: %w", err)
 	}
-	defer func() { _ = f.Close() }()
-
-	var bom cdx.BOM
-	decoder := cdx.NewBOMDecoder(f, cdx.BOMFileFormatJSON)
-	if err := decoder.Decode(&bom); err != nil {
-		return nil, fmt.Errorf("decoding CycloneDX SBOM: %w", err)
+	result, err := ParseCycloneDXBytes(data)
+	if err != nil {
+		return nil, err
 	}
-
-	var components []model.Component
-	if bom.Components != nil {
-		for _, comp := range *bom.Components {
-			c := model.Component{
-				Type:    string(comp.Type),
-				Name:    comp.Name,
-				Version: comp.Version,
-			}
-			if comp.PackageURL != "" {
-				c.PURL = comp.PackageURL
-			}
-			if comp.CPE != "" {
-				c.CPE = comp.CPE
-			}
-			components = append(components, c)
-		}
-	}
-
-	return components, nil
+	return result.Components, nil
 }
 
 func parseSPDX(path string) ([]model.Component, error) {
