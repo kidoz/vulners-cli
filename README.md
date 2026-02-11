@@ -211,7 +211,7 @@ just clean
 
 ### Requirements
 
-- Go >= 1.24
+- Go >= 1.25
 - [just](https://github.com/casey/just) task runner
 - golangci-lint v2
 - gofumpt
