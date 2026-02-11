@@ -3,12 +3,9 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 
 	vulners "github.com/kidoz/go-vulners"
 	"github.com/kidoz/vulners-cli/internal/cache"
-	"github.com/kidoz/vulners-cli/internal/model"
-	"github.com/kidoz/vulners-cli/internal/report"
 )
 
 // CVECmd looks up a CVE by ID.
@@ -29,14 +26,19 @@ func (c *CVECmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cache.
 	if err := validateNonScanFormat(globals.Output); err != nil {
 		return err
 	}
-	reporter := report.New(model.OutputFormat(globals.Output))
+
+	w, closer, err := outputWriter(globals)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = closer() }()
 
 	if globals.Offline {
 		bulletin, err := store.GetBulletin(ctx, c.ID)
 		if err != nil {
 			return fmt.Errorf("offline CVE lookup failed: %w", err)
 		}
-		return reporter.Write(os.Stdout, bulletin)
+		return writeIntelOutput(w, globals, "cve", bulletin, nil)
 	}
 
 	if deps.Intel == nil {
@@ -50,7 +52,7 @@ func (c *CVECmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cache.
 
 	// If neither extra flag is set, output just the bulletin.
 	if !c.References && !c.History {
-		return reporter.Write(os.Stdout, bulletin)
+		return writeIntelOutput(w, globals, "cve", bulletin, nil)
 	}
 
 	output := CVEOutput{Bulletin: bulletin}
@@ -71,5 +73,5 @@ func (c *CVECmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cache.
 		output.History = history
 	}
 
-	return reporter.Write(os.Stdout, output)
+	return writeIntelOutput(w, globals, "cve", output, nil)
 }

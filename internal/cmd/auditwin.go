@@ -3,12 +3,9 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	vulners "github.com/kidoz/go-vulners"
-	"github.com/kidoz/vulners-cli/internal/model"
-	"github.com/kidoz/vulners-cli/internal/report"
 )
 
 // WinFullAuditCmd audits Windows using the WinAudit API (KBs + software).
@@ -45,6 +42,11 @@ func (c *WinFullAuditCmd) Run(ctx context.Context, globals *CLI, deps *Deps) err
 		return fmt.Errorf("windows audit failed: %w", err)
 	}
 
-	reporter := report.New(model.OutputFormat(globals.Output))
-	return reporter.Write(os.Stdout, result)
+	w, closer, werr := outputWriter(globals)
+	if werr != nil {
+		return werr
+	}
+	defer func() { _ = closer() }()
+
+	return writeIntelOutput(w, globals, "audit winaudit", result, nil)
 }

@@ -3,11 +3,8 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/kidoz/vulners-cli/internal/cache"
-	"github.com/kidoz/vulners-cli/internal/model"
-	"github.com/kidoz/vulners-cli/internal/report"
 )
 
 // CPECmd searches by CPE.
@@ -21,14 +18,19 @@ func (c *CPECmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cache.
 	if err := validateNonScanFormat(globals.Output); err != nil {
 		return err
 	}
-	reporter := report.New(model.OutputFormat(globals.Output))
+
+	w, closer, err := outputWriter(globals)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = closer() }()
 
 	if globals.Offline {
-		bulletins, _, err := store.SearchBulletins(ctx, c.Product, c.Limit, 0)
+		bulletins, total, err := store.SearchBulletins(ctx, c.Product, c.Limit, 0)
 		if err != nil {
 			return fmt.Errorf("offline CPE search failed: %w", err)
 		}
-		return reporter.Write(os.Stdout, bulletins)
+		return writeIntelOutput(w, globals, "cpe", bulletins, map[string]any{"total": total})
 	}
 
 	if deps.Intel == nil {
@@ -45,5 +47,5 @@ func (c *CPECmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cache.
 		return fmt.Errorf("CPE search failed: %w", err)
 	}
 
-	return reporter.Write(os.Stdout, result)
+	return writeIntelOutput(w, globals, "cpe", result, nil)
 }

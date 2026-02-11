@@ -3,10 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
-
-	"github.com/kidoz/vulners-cli/internal/model"
-	"github.com/kidoz/vulners-cli/internal/report"
 )
 
 // WindowsAuditCmd audits Windows KB updates.
@@ -31,6 +27,11 @@ func (c *WindowsAuditCmd) Run(ctx context.Context, globals *CLI, deps *Deps) err
 		return fmt.Errorf("windows audit failed: %w", err)
 	}
 
-	reporter := report.New(model.OutputFormat(globals.Output))
-	return reporter.Write(os.Stdout, result)
+	w, closer, werr := outputWriter(globals)
+	if werr != nil {
+		return werr
+	}
+	defer func() { _ = closer() }()
+
+	return writeIntelOutput(w, globals, "audit windows", result, nil)
 }

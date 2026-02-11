@@ -3,11 +3,8 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/kidoz/vulners-cli/internal/cache"
-	"github.com/kidoz/vulners-cli/internal/model"
-	"github.com/kidoz/vulners-cli/internal/report"
 )
 
 // SearchCmd searches the Vulners database.
@@ -22,14 +19,19 @@ func (c *SearchCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cac
 	if err := validateNonScanFormat(globals.Output); err != nil {
 		return err
 	}
-	reporter := report.New(model.OutputFormat(globals.Output))
+
+	w, closer, err := outputWriter(globals)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = closer() }()
 
 	if globals.Offline {
-		bulletins, _, err := store.SearchBulletins(ctx, c.Query, c.Limit, c.Offset)
+		bulletins, total, err := store.SearchBulletins(ctx, c.Query, c.Limit, c.Offset)
 		if err != nil {
 			return fmt.Errorf("offline search failed: %w", err)
 		}
-		return reporter.Write(os.Stdout, bulletins)
+		return writeIntelOutput(w, globals, "search", bulletins, map[string]any{"total": total})
 	}
 
 	if deps.Intel == nil {
@@ -37,7 +39,6 @@ func (c *SearchCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cac
 	}
 
 	var result any
-	var err error
 	if c.Exploits {
 		result, err = deps.Intel.SearchExploits(ctx, c.Query, c.Limit, c.Offset)
 	} else {
@@ -47,5 +48,5 @@ func (c *SearchCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cac
 		return fmt.Errorf("search failed: %w", err)
 	}
 
-	return reporter.Write(os.Stdout, result)
+	return writeIntelOutput(w, globals, "search", result, nil)
 }

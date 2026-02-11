@@ -3,11 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
-
-	"github.com/kidoz/vulners-cli/internal/model"
-	"github.com/kidoz/vulners-cli/internal/report"
 )
 
 // StixCmd exports STIX bundles from Vulners.
@@ -38,6 +34,11 @@ func (c *StixCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
 		return fmt.Errorf("STIX export failed: %w", err)
 	}
 
-	reporter := report.New(model.OutputFormat(globals.Output))
-	return reporter.Write(os.Stdout, result)
+	w, closer, werr := outputWriter(globals)
+	if werr != nil {
+		return werr
+	}
+	defer func() { _ = closer() }()
+
+	return writeIntelOutput(w, globals, "stix", result, nil)
 }

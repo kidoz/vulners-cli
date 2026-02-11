@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 
 	"github.com/kidoz/vulners-cli/internal/cache"
 	"github.com/kidoz/vulners-cli/internal/inventory"
@@ -26,6 +25,9 @@ type ScanOutput struct {
 	Components    []model.Component `json:"components"`
 	Findings      []model.Finding   `json:"findings"`
 	Summary       ScanSummary       `json:"summary"`
+	TopFindings   []model.Finding   `json:"topFindings,omitempty"`
+	Truncated     bool              `json:"truncated,omitempty"`
+	TotalFindings int               `json:"totalFindings,omitempty"`
 }
 
 // ScanSummary summarizes scan results.
@@ -149,16 +151,46 @@ func finalizeScan(globals *CLI, target string, components []model.Component, fin
 }
 
 func writeOutput(globals *CLI, target string, components []model.Component, findings []model.Finding) error {
+	if globals.Agent {
+		sortFindings(findings)
+	}
+
+	// Summarize the full set before any truncation.
+	summary := summarize(components, findings)
+
 	output := ScanOutput{
 		SchemaVersion: "1.0.0",
 		Target:        target,
 		Components:    components,
 		Findings:      findings,
-		Summary:       summarize(components, findings),
+		Summary:       summary,
 	}
 
+	// --summary-only: keep summary + top 5 findings, drop full lists.
+	if globals.SummaryOnly {
+		output.Components = []model.Component{}
+		output.Findings = []model.Finding{}
+		top := topNFindings(findings, 5)
+		if len(top) > 0 {
+			output.TopFindings = top
+		}
+	}
+
+	// Truncate findings if --max-findings is set (skipped when summary-only).
+	if !globals.SummaryOnly && globals.MaxFindings > 0 && len(findings) > globals.MaxFindings {
+		output.Truncated = true
+		output.TotalFindings = len(findings)
+		output.Findings = findings[:globals.MaxFindings]
+	}
+
+	w, closer, err := outputWriter(globals)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = closer() }()
+
 	reporter := report.New(model.OutputFormat(globals.Output))
-	return reporter.Write(os.Stdout, output)
+	return reporter.Write(w, output)
 }
 
 func summarize(components []model.Component, findings []model.Finding) ScanSummary {

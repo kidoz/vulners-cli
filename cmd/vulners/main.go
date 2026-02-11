@@ -54,12 +54,12 @@ func main() {
 	os.Exit(exitCode)
 }
 
-func provideLogger(cfg *config.Config) (*slog.Logger, *slog.LevelVar) {
+func provideLogger(cfg *config.Config, cli *icmd.CLI) (*slog.Logger, *slog.LevelVar) {
 	lvl := &slog.LevelVar{}
 
 	// Set initial level from env-based config.
 	switch {
-	case cfg.Quiet:
+	case cfg.Quiet || cli.Agent:
 		lvl.Set(slog.LevelError)
 	case cfg.Verbose:
 		lvl.Set(slog.LevelDebug)
@@ -67,8 +67,10 @@ func provideLogger(cfg *config.Config) (*slog.Logger, *slog.LevelVar) {
 		lvl.Set(slog.LevelInfo)
 	}
 
+	useColor := isTerminal() && !cli.NoColor && !cli.Agent
+
 	var handler slog.Handler
-	if isTerminal() {
+	if useColor {
 		handler = tint.NewHandler(os.Stderr, &tint.Options{
 			Level:      lvl,
 			TimeFormat: time.Kitchen,
@@ -214,6 +216,13 @@ func scanExplicitFlags() map[string]bool {
 // the user did not explicitly pass them on the command line, then updates the
 // log level to match the final effective flags.
 func applyConfigFlags(cfg *config.Config, cli *icmd.CLI, lvl *slog.LevelVar) {
+	// --agent implies --output json, --quiet, --no-color.
+	if cli.Agent {
+		cli.Output = "json"
+		cli.Quiet = true
+		cli.NoColor = true
+	}
+
 	ef := scanExplicitFlags()
 	if cfg.Offline && !ef["offline"] {
 		cli.Offline = true

@@ -3,12 +3,9 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	vulners "github.com/kidoz/go-vulners"
-	"github.com/kidoz/vulners-cli/internal/model"
-	"github.com/kidoz/vulners-cli/internal/report"
 )
 
 // HostAuditCmd audits host packages using the v4 Host audit API.
@@ -44,6 +41,11 @@ func (c *HostAuditCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error 
 		return fmt.Errorf("host audit failed: %w", err)
 	}
 
-	reporter := report.New(model.OutputFormat(globals.Output))
-	return reporter.Write(os.Stdout, result)
+	w, closer, werr := outputWriter(globals)
+	if werr != nil {
+		return werr
+	}
+	defer func() { _ = closer() }()
+
+	return writeIntelOutput(w, globals, "audit host", result, nil)
 }
