@@ -116,6 +116,10 @@ func (m *mockClient) MakeSTIXBundleByCVE(context.Context, string) (*vulners.Stix
 	return nil, nil
 }
 
+func (m *mockClient) QueryAutocomplete(context.Context, string) ([]string, error) {
+	return nil, nil
+}
+
 func TestMatcher_Match_WithResults(t *testing.T) {
 	client := &mockClient{
 		searchFn: func(_ context.Context, query string, _, _ int) (*intel.SearchResult, error) {

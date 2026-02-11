@@ -27,6 +27,7 @@ type Client interface {
 	GetAIScore(ctx context.Context, text string) (*vulners.AIScore, error)
 	MakeSTIXBundleByID(ctx context.Context, id string) (*vulners.StixBundle, error)
 	MakeSTIXBundleByCVE(ctx context.Context, cveID string) (*vulners.StixBundle, error)
+	QueryAutocomplete(ctx context.Context, query string) ([]string, error)
 }
 
 // SearchResult wraps the Vulners search response.

@@ -27,12 +27,13 @@ type CLI struct {
 	VEX         string   `help:"Path to OpenVEX document for suppression"`
 
 	// Commands
-	Version  VersionCmd `cmd:"" help:"Print version information"`
-	Search   SearchCmd  `cmd:"" help:"Search Vulners database"`
-	CVE      CVECmd     `cmd:"" name:"cve" help:"Look up a CVE by ID"`
-	CPE      CPECmd     `cmd:"" name:"cpe" help:"Search by CPE"`
-	Audit    AuditCmd   `cmd:"" help:"Audit OS packages"`
-	Scan     ScanCmd    `cmd:"" help:"Scan targets for vulnerabilities"`
-	Offline_ OfflineCmd `cmd:"" name:"offline" help:"Manage offline database"`
-	STIX     StixCmd    `cmd:"" name:"stix" help:"Export STIX bundle for a bulletin or CVE"`
+	Version      VersionCmd      `cmd:"" help:"Print version information"`
+	Search       SearchCmd       `cmd:"" help:"Search Vulners database"`
+	CVE          CVECmd          `cmd:"" name:"cve" help:"Look up a CVE by ID"`
+	CPE          CPECmd          `cmd:"" name:"cpe" help:"Search by CPE"`
+	Audit        AuditCmd        `cmd:"" help:"Audit OS packages"`
+	Scan         ScanCmd         `cmd:"" help:"Scan targets for vulnerabilities"`
+	Offline_     OfflineCmd      `cmd:"" name:"offline" help:"Manage offline database"`
+	STIX         StixCmd         `cmd:"" name:"stix" help:"Export STIX bundle for a bulletin or CVE"`
+	Autocomplete AutocompleteCmd `cmd:"" help:"Autocomplete a Vulners search query"`
 }

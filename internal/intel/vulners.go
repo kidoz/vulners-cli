@@ -257,3 +257,14 @@ func (v *VulnersClient) MakeSTIXBundleByCVE(ctx context.Context, cveID string) (
 
 	return bundle, nil
 }
+
+func (v *VulnersClient) QueryAutocomplete(ctx context.Context, query string) ([]string, error) {
+	v.logger.Debug("query autocomplete", "query", query)
+
+	suggestions, err := v.client.Misc().QueryAutocomplete(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("query autocomplete: %w", err)
+	}
+
+	return suggestions, nil
+}

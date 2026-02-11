@@ -28,6 +28,7 @@ type mockIntelClient struct {
 	getAIScoreFn            func(ctx context.Context, text string) (*vulners.AIScore, error)
 	makeSTIXBundleByIDFn    func(ctx context.Context, id string) (*vulners.StixBundle, error)
 	makeSTIXBundleByCVEFn   func(ctx context.Context, cveID string) (*vulners.StixBundle, error)
+	queryAutocompleteFn     func(ctx context.Context, query string) ([]string, error)
 }
 
 func (m *mockIntelClient) Search(ctx context.Context, query string, limit, offset int) (*intel.SearchResult, error) {
@@ -147,4 +148,11 @@ func (m *mockIntelClient) MakeSTIXBundleByCVE(ctx context.Context, cveID string)
 		return m.makeSTIXBundleByCVEFn(ctx, cveID)
 	}
 	return &vulners.StixBundle{}, nil
+}
+
+func (m *mockIntelClient) QueryAutocomplete(ctx context.Context, query string) ([]string, error) {
+	if m.queryAutocompleteFn != nil {
+		return m.queryAutocompleteFn(ctx, query)
+	}
+	return nil, nil
 }
