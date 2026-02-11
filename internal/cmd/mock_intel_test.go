@@ -35,6 +35,18 @@ type mockIntelClient struct {
 	hostVulnsFn             func(ctx context.Context, limit, offset int) ([]vulners.HostVuln, error)
 	scanListFn              func(ctx context.Context, limit, offset int) ([]vulners.ScanItem, error)
 	ipSummaryReportFn       func(ctx context.Context) (*vulners.IPSummary, error)
+	listWebhooksFn          func(ctx context.Context) ([]vulners.Webhook, error)
+	addWebhookFn            func(ctx context.Context, query string) (*vulners.Webhook, error)
+	getWebhookFn            func(ctx context.Context, id string) (*vulners.Webhook, error)
+	readWebhookFn           func(ctx context.Context, id string, newestOnly bool) (*vulners.WebhookData, error)
+	enableWebhookFn         func(ctx context.Context, id string, active bool) error
+	deleteWebhookFn         func(ctx context.Context, id string) error
+	listSubscriptionsFn     func(ctx context.Context) ([]vulners.Subscription, error)
+	getSubscriptionFn       func(ctx context.Context, id string) (*vulners.Subscription, error)
+	createSubscriptionFn    func(ctx context.Context, req *vulners.SubscriptionRequest) (*vulners.Subscription, error)
+	updateSubscriptionFn    func(ctx context.Context, id string, req *vulners.SubscriptionRequest) (*vulners.Subscription, error)
+	deleteSubscriptionFn    func(ctx context.Context, id string) error
+	enableSubscriptionFn    func(ctx context.Context, id string, active bool) error
 }
 
 func (m *mockIntelClient) Search(ctx context.Context, query string, limit, offset int) (*intel.SearchResult, error) {
@@ -203,4 +215,88 @@ func (m *mockIntelClient) IPSummaryReport(ctx context.Context) (*vulners.IPSumma
 		return m.ipSummaryReportFn(ctx)
 	}
 	return &vulners.IPSummary{}, nil
+}
+
+func (m *mockIntelClient) ListWebhooks(ctx context.Context) ([]vulners.Webhook, error) {
+	if m.listWebhooksFn != nil {
+		return m.listWebhooksFn(ctx)
+	}
+	return nil, nil
+}
+
+func (m *mockIntelClient) AddWebhook(ctx context.Context, query string) (*vulners.Webhook, error) {
+	if m.addWebhookFn != nil {
+		return m.addWebhookFn(ctx, query)
+	}
+	return &vulners.Webhook{}, nil
+}
+
+func (m *mockIntelClient) GetWebhook(ctx context.Context, id string) (*vulners.Webhook, error) {
+	if m.getWebhookFn != nil {
+		return m.getWebhookFn(ctx, id)
+	}
+	return &vulners.Webhook{}, nil
+}
+
+func (m *mockIntelClient) ReadWebhook(ctx context.Context, id string, newestOnly bool) (*vulners.WebhookData, error) {
+	if m.readWebhookFn != nil {
+		return m.readWebhookFn(ctx, id, newestOnly)
+	}
+	return &vulners.WebhookData{}, nil
+}
+
+func (m *mockIntelClient) EnableWebhook(ctx context.Context, id string, active bool) error {
+	if m.enableWebhookFn != nil {
+		return m.enableWebhookFn(ctx, id, active)
+	}
+	return nil
+}
+
+func (m *mockIntelClient) DeleteWebhook(ctx context.Context, id string) error {
+	if m.deleteWebhookFn != nil {
+		return m.deleteWebhookFn(ctx, id)
+	}
+	return nil
+}
+
+func (m *mockIntelClient) ListSubscriptions(ctx context.Context) ([]vulners.Subscription, error) {
+	if m.listSubscriptionsFn != nil {
+		return m.listSubscriptionsFn(ctx)
+	}
+	return nil, nil
+}
+
+func (m *mockIntelClient) GetSubscription(ctx context.Context, id string) (*vulners.Subscription, error) {
+	if m.getSubscriptionFn != nil {
+		return m.getSubscriptionFn(ctx, id)
+	}
+	return &vulners.Subscription{}, nil
+}
+
+func (m *mockIntelClient) CreateSubscription(ctx context.Context, req *vulners.SubscriptionRequest) (*vulners.Subscription, error) {
+	if m.createSubscriptionFn != nil {
+		return m.createSubscriptionFn(ctx, req)
+	}
+	return &vulners.Subscription{}, nil
+}
+
+func (m *mockIntelClient) UpdateSubscription(ctx context.Context, id string, req *vulners.SubscriptionRequest) (*vulners.Subscription, error) {
+	if m.updateSubscriptionFn != nil {
+		return m.updateSubscriptionFn(ctx, id, req)
+	}
+	return &vulners.Subscription{}, nil
+}
+
+func (m *mockIntelClient) DeleteSubscription(ctx context.Context, id string) error {
+	if m.deleteSubscriptionFn != nil {
+		return m.deleteSubscriptionFn(ctx, id)
+	}
+	return nil
+}
+
+func (m *mockIntelClient) EnableSubscription(ctx context.Context, id string, active bool) error {
+	if m.enableSubscriptionFn != nil {
+		return m.enableSubscriptionFn(ctx, id, active)
+	}
+	return nil
 }

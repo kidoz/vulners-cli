@@ -144,6 +144,39 @@ func (m *mockClient) IPSummaryReport(context.Context) (*vulners.IPSummary, error
 	return nil, nil
 }
 
+func (m *mockClient) ListWebhooks(context.Context) ([]vulners.Webhook, error) { return nil, nil }
+func (m *mockClient) AddWebhook(context.Context, string) (*vulners.Webhook, error) {
+	return nil, nil
+}
+
+func (m *mockClient) GetWebhook(context.Context, string) (*vulners.Webhook, error) {
+	return nil, nil
+}
+
+func (m *mockClient) ReadWebhook(context.Context, string, bool) (*vulners.WebhookData, error) {
+	return nil, nil
+}
+func (m *mockClient) EnableWebhook(context.Context, string, bool) error { return nil }
+func (m *mockClient) DeleteWebhook(context.Context, string) error       { return nil }
+
+func (m *mockClient) ListSubscriptions(context.Context) ([]vulners.Subscription, error) {
+	return nil, nil
+}
+
+func (m *mockClient) GetSubscription(context.Context, string) (*vulners.Subscription, error) {
+	return nil, nil
+}
+
+func (m *mockClient) CreateSubscription(context.Context, *vulners.SubscriptionRequest) (*vulners.Subscription, error) {
+	return nil, nil
+}
+
+func (m *mockClient) UpdateSubscription(context.Context, string, *vulners.SubscriptionRequest) (*vulners.Subscription, error) {
+	return nil, nil
+}
+func (m *mockClient) DeleteSubscription(context.Context, string) error       { return nil }
+func (m *mockClient) EnableSubscription(context.Context, string, bool) error { return nil }
+
 func TestMatcher_Match_WithResults(t *testing.T) {
 	client := &mockClient{
 		searchFn: func(_ context.Context, query string, _, _ int) (*intel.SearchResult, error) {

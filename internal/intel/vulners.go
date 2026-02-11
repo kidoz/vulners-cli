@@ -341,3 +341,63 @@ func (v *VulnersClient) IPSummaryReport(ctx context.Context) (*vulners.IPSummary
 	}
 	return result, nil
 }
+
+func (v *VulnersClient) ListWebhooks(ctx context.Context) ([]vulners.Webhook, error) {
+	v.logger.Debug("list webhooks")
+	return v.client.Webhook().List(ctx)
+}
+
+func (v *VulnersClient) AddWebhook(ctx context.Context, query string) (*vulners.Webhook, error) {
+	v.logger.Debug("add webhook", "query", query)
+	return v.client.Webhook().Add(ctx, query)
+}
+
+func (v *VulnersClient) GetWebhook(ctx context.Context, id string) (*vulners.Webhook, error) {
+	v.logger.Debug("get webhook", "id", id)
+	return v.client.Webhook().GetByID(ctx, id)
+}
+
+func (v *VulnersClient) ReadWebhook(ctx context.Context, id string, newestOnly bool) (*vulners.WebhookData, error) {
+	v.logger.Debug("read webhook", "id", id, "newestOnly", newestOnly)
+	return v.client.Webhook().Read(ctx, id, newestOnly)
+}
+
+func (v *VulnersClient) EnableWebhook(ctx context.Context, id string, active bool) error {
+	v.logger.Debug("enable webhook", "id", id, "active", active)
+	return v.client.Webhook().Enable(ctx, id, active)
+}
+
+func (v *VulnersClient) DeleteWebhook(ctx context.Context, id string) error {
+	v.logger.Debug("delete webhook", "id", id)
+	return v.client.Webhook().Delete(ctx, id)
+}
+
+func (v *VulnersClient) ListSubscriptions(ctx context.Context) ([]vulners.Subscription, error) {
+	v.logger.Debug("list subscriptions")
+	return v.client.Subscription().List(ctx)
+}
+
+func (v *VulnersClient) GetSubscription(ctx context.Context, id string) (*vulners.Subscription, error) {
+	v.logger.Debug("get subscription", "id", id)
+	return v.client.Subscription().Get(ctx, id)
+}
+
+func (v *VulnersClient) CreateSubscription(ctx context.Context, req *vulners.SubscriptionRequest) (*vulners.Subscription, error) {
+	v.logger.Debug("create subscription", "name", req.Name)
+	return v.client.Subscription().Create(ctx, req)
+}
+
+func (v *VulnersClient) UpdateSubscription(ctx context.Context, id string, req *vulners.SubscriptionRequest) (*vulners.Subscription, error) {
+	v.logger.Debug("update subscription", "id", id)
+	return v.client.Subscription().Update(ctx, id, req)
+}
+
+func (v *VulnersClient) DeleteSubscription(ctx context.Context, id string) error {
+	v.logger.Debug("delete subscription", "id", id)
+	return v.client.Subscription().Delete(ctx, id)
+}
+
+func (v *VulnersClient) EnableSubscription(ctx context.Context, id string, active bool) error {
+	v.logger.Debug("enable subscription", "id", id, "active", active)
+	return v.client.Subscription().Enable(ctx, id, active)
+}

@@ -34,6 +34,18 @@ type Client interface {
 	HostVulns(ctx context.Context, limit, offset int) ([]vulners.HostVuln, error)
 	ScanList(ctx context.Context, limit, offset int) ([]vulners.ScanItem, error)
 	IPSummaryReport(ctx context.Context) (*vulners.IPSummary, error)
+	ListWebhooks(ctx context.Context) ([]vulners.Webhook, error)
+	AddWebhook(ctx context.Context, query string) (*vulners.Webhook, error)
+	GetWebhook(ctx context.Context, id string) (*vulners.Webhook, error)
+	ReadWebhook(ctx context.Context, id string, newestOnly bool) (*vulners.WebhookData, error)
+	EnableWebhook(ctx context.Context, id string, active bool) error
+	DeleteWebhook(ctx context.Context, id string) error
+	ListSubscriptions(ctx context.Context) ([]vulners.Subscription, error)
+	GetSubscription(ctx context.Context, id string) (*vulners.Subscription, error)
+	CreateSubscription(ctx context.Context, req *vulners.SubscriptionRequest) (*vulners.Subscription, error)
+	UpdateSubscription(ctx context.Context, id string, req *vulners.SubscriptionRequest) (*vulners.Subscription, error)
+	DeleteSubscription(ctx context.Context, id string) error
+	EnableSubscription(ctx context.Context, id string, active bool) error
 }
 
 // SearchResult wraps the Vulners search response.

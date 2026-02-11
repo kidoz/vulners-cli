@@ -42,4 +42,7 @@ type CLI struct {
 	Doctor       DoctorCmd       `cmd:"" help:"Run environment health checks"`
 	Spec         SpecCmd         `cmd:"" help:"Output machine-readable command and flag definitions"`
 	Report       ReportCmd       `cmd:"" help:"Account-level vulnerability reports"`
+	Webhook      WebhookCmd      `cmd:"" help:"Manage search query webhooks"`
+	Subscription SubscriptionCmd `cmd:"" help:"Manage alert subscriptions"`
+	VScan        VScanCmd        `cmd:"" name:"vscan" help:"Manage VScanner remote vulnerability scans"`
 }
