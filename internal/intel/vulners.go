@@ -268,3 +268,76 @@ func (v *VulnersClient) QueryAutocomplete(ctx context.Context, query string) ([]
 
 	return suggestions, nil
 }
+
+func (v *VulnersClient) GetSuggestion(ctx context.Context, fieldName string) ([]string, error) {
+	v.logger.Debug("get suggestion", "field", fieldName)
+
+	suggestions, err := v.client.Misc().GetSuggestion(ctx, fieldName)
+	if err != nil {
+		return nil, fmt.Errorf("get suggestion: %w", err)
+	}
+
+	return suggestions, nil
+}
+
+func (v *VulnersClient) VulnsSummaryReport(ctx context.Context, limit, offset int) (*vulners.VulnsSummary, error) {
+	v.logger.Debug("vulns summary report", "limit", limit, "offset", offset)
+
+	result, err := v.client.Report().VulnsSummaryReport(ctx,
+		vulners.WithReportLimit(limit),
+		vulners.WithReportOffset(offset),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("vulns summary report: %w", err)
+	}
+	return result, nil
+}
+
+func (v *VulnersClient) VulnsList(ctx context.Context, limit, offset int) ([]vulners.VulnItem, error) {
+	v.logger.Debug("vulns list", "limit", limit, "offset", offset)
+
+	result, err := v.client.Report().VulnsList(ctx,
+		vulners.WithReportLimit(limit),
+		vulners.WithReportOffset(offset),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("vulns list: %w", err)
+	}
+	return result, nil
+}
+
+func (v *VulnersClient) HostVulns(ctx context.Context, limit, offset int) ([]vulners.HostVuln, error) {
+	v.logger.Debug("host vulns", "limit", limit, "offset", offset)
+
+	result, err := v.client.Report().HostVulns(ctx,
+		vulners.WithReportLimit(limit),
+		vulners.WithReportOffset(offset),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("host vulns: %w", err)
+	}
+	return result, nil
+}
+
+func (v *VulnersClient) ScanList(ctx context.Context, limit, offset int) ([]vulners.ScanItem, error) {
+	v.logger.Debug("scan list", "limit", limit, "offset", offset)
+
+	result, err := v.client.Report().ScanList(ctx,
+		vulners.WithReportLimit(limit),
+		vulners.WithReportOffset(offset),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("scan list: %w", err)
+	}
+	return result, nil
+}
+
+func (v *VulnersClient) IPSummaryReport(ctx context.Context) (*vulners.IPSummary, error) {
+	v.logger.Debug("IP summary report")
+
+	result, err := v.client.Report().IPSummaryReport(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("IP summary report: %w", err)
+	}
+	return result, nil
+}

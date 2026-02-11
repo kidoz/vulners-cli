@@ -53,6 +53,16 @@ func (c *ScanRepoCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store c
 	return scanComponents(ctx, globals, deps, store, logger, c.Path, components)
 }
 
+// PlanOutput describes what a scan would do without executing it.
+type PlanOutput struct {
+	Target         string            `json:"target"`
+	Mode           string            `json:"mode"` // "online" or "offline"
+	ComponentCount int               `json:"componentCount"`
+	Ecosystems     map[string]int    `json:"ecosystems"`
+	HasAPIKey      bool              `json:"hasApiKey"`
+	Components     []model.Component `json:"components,omitempty"`
+}
+
 func scanComponents(
 	ctx context.Context,
 	globals *CLI,
@@ -62,6 +72,10 @@ func scanComponents(
 	target string,
 	components []model.Component,
 ) error {
+	if globals.Plan {
+		return writePlanOutput(globals, target, components, deps)
+	}
+
 	var findings []model.Finding
 	var err error
 	if globals.Offline {
@@ -77,6 +91,38 @@ func scanComponents(
 		return err
 	}
 	return finalizeScan(globals, target, components, findings)
+}
+
+func writePlanOutput(globals *CLI, target string, components []model.Component, deps *Deps) error {
+	ecosystems := make(map[string]int)
+	for _, c := range components {
+		t := c.Type
+		if t == "" {
+			t = "unknown"
+		}
+		ecosystems[t]++
+	}
+
+	mode := "online"
+	if globals.Offline {
+		mode = "offline"
+	}
+
+	plan := PlanOutput{
+		Target:         target,
+		Mode:           mode,
+		ComponentCount: len(components),
+		Ecosystems:     ecosystems,
+		HasAPIKey:      deps.Intel != nil,
+	}
+
+	w, closer, err := outputWriter(globals)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = closer() }()
+
+	return writeIntelOutput(w, globals, "plan", plan, nil)
 }
 
 func scanOfflineComponents(
@@ -190,7 +236,17 @@ func writeOutput(globals *CLI, target string, components []model.Component, find
 	defer func() { _ = closer() }()
 
 	reporter := report.New(model.OutputFormat(globals.Output))
-	return reporter.Write(w, output)
+
+	var out any = output
+	if model.OutputFormat(globals.Output) == model.OutputJSON && len(globals.Fields) > 0 {
+		projected, ferr := projectFields(output, globals.Fields)
+		if ferr != nil {
+			return ferr
+		}
+		out = projected
+	}
+
+	return reporter.Write(w, out)
 }
 
 func summarize(components []model.Component, findings []model.Finding) ScanSummary {

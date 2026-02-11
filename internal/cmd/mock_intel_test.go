@@ -29,6 +29,12 @@ type mockIntelClient struct {
 	makeSTIXBundleByIDFn    func(ctx context.Context, id string) (*vulners.StixBundle, error)
 	makeSTIXBundleByCVEFn   func(ctx context.Context, cveID string) (*vulners.StixBundle, error)
 	queryAutocompleteFn     func(ctx context.Context, query string) ([]string, error)
+	getSuggestionFn         func(ctx context.Context, fieldName string) ([]string, error)
+	vulnsSummaryReportFn    func(ctx context.Context, limit, offset int) (*vulners.VulnsSummary, error)
+	vulnsListFn             func(ctx context.Context, limit, offset int) ([]vulners.VulnItem, error)
+	hostVulnsFn             func(ctx context.Context, limit, offset int) ([]vulners.HostVuln, error)
+	scanListFn              func(ctx context.Context, limit, offset int) ([]vulners.ScanItem, error)
+	ipSummaryReportFn       func(ctx context.Context) (*vulners.IPSummary, error)
 }
 
 func (m *mockIntelClient) Search(ctx context.Context, query string, limit, offset int) (*intel.SearchResult, error) {
@@ -155,4 +161,46 @@ func (m *mockIntelClient) QueryAutocomplete(ctx context.Context, query string) (
 		return m.queryAutocompleteFn(ctx, query)
 	}
 	return nil, nil
+}
+
+func (m *mockIntelClient) GetSuggestion(ctx context.Context, fieldName string) ([]string, error) {
+	if m.getSuggestionFn != nil {
+		return m.getSuggestionFn(ctx, fieldName)
+	}
+	return nil, nil
+}
+
+func (m *mockIntelClient) VulnsSummaryReport(ctx context.Context, limit, offset int) (*vulners.VulnsSummary, error) {
+	if m.vulnsSummaryReportFn != nil {
+		return m.vulnsSummaryReportFn(ctx, limit, offset)
+	}
+	return &vulners.VulnsSummary{}, nil
+}
+
+func (m *mockIntelClient) VulnsList(ctx context.Context, limit, offset int) ([]vulners.VulnItem, error) {
+	if m.vulnsListFn != nil {
+		return m.vulnsListFn(ctx, limit, offset)
+	}
+	return nil, nil
+}
+
+func (m *mockIntelClient) HostVulns(ctx context.Context, limit, offset int) ([]vulners.HostVuln, error) {
+	if m.hostVulnsFn != nil {
+		return m.hostVulnsFn(ctx, limit, offset)
+	}
+	return nil, nil
+}
+
+func (m *mockIntelClient) ScanList(ctx context.Context, limit, offset int) ([]vulners.ScanItem, error) {
+	if m.scanListFn != nil {
+		return m.scanListFn(ctx, limit, offset)
+	}
+	return nil, nil
+}
+
+func (m *mockIntelClient) IPSummaryReport(ctx context.Context) (*vulners.IPSummary, error) {
+	if m.ipSummaryReportFn != nil {
+		return m.ipSummaryReportFn(ctx)
+	}
+	return &vulners.IPSummary{}, nil
 }

@@ -20,13 +20,20 @@ type IntelOutput struct {
 func writeIntelOutput(w io.Writer, globals *CLI, command string, data any, meta any) error {
 	reporter := report.New(model.OutputFormat(globals.Output))
 	if model.OutputFormat(globals.Output) == model.OutputJSON {
-		envelope := IntelOutput{
+		var out any = IntelOutput{
 			SchemaVersion: "1.0.0",
 			Command:       command,
 			Data:          data,
 			Meta:          meta,
 		}
-		return reporter.Write(w, envelope)
+		if len(globals.Fields) > 0 {
+			projected, err := projectFields(out, globals.Fields)
+			if err != nil {
+				return err
+			}
+			out = projected
+		}
+		return reporter.Write(w, out)
 	}
 	return reporter.Write(w, data)
 }

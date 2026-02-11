@@ -6,8 +6,6 @@ import (
 	"os"
 
 	"github.com/kidoz/vulners-cli/internal/cache"
-	"github.com/kidoz/vulners-cli/internal/model"
-	"github.com/kidoz/vulners-cli/internal/report"
 )
 
 // OfflineStatusCmd shows offline database status.
@@ -27,6 +25,11 @@ func (c *OfflineStatusCmd) Run(ctx context.Context, globals *CLI, store cache.St
 		return nil
 	}
 
-	reporter := report.New(model.OutputFormat(globals.Output))
-	return reporter.Write(os.Stdout, metas)
+	w, closer, werr := outputWriter(globals)
+	if werr != nil {
+		return werr
+	}
+	defer func() { _ = closer() }()
+
+	return writeIntelOutput(w, globals, "offline status", metas, nil)
 }

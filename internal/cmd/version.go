@@ -2,11 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"runtime"
-
-	"github.com/kidoz/vulners-cli/internal/model"
-	"github.com/kidoz/vulners-cli/internal/report"
 )
 
 // Set via ldflags at build time.
@@ -39,12 +35,17 @@ func (c *VersionCmd) Run(globals *CLI) error {
 		GoVersion: runtime.Version(),
 	}
 
+	w, closer, werr := outputWriter(globals)
+	if werr != nil {
+		return werr
+	}
+	defer func() { _ = closer() }()
+
 	if globals.Output == "table" {
-		fmt.Printf("vulners %s (commit: %s, built: %s, %s)\n",
+		_, err := fmt.Fprintf(w, "vulners %s (commit: %s, built: %s, %s)\n",
 			info.Version, info.Commit, info.Date, info.GoVersion)
-		return nil
+		return err
 	}
 
-	reporter := report.New(model.OutputFormat(globals.Output))
-	return reporter.Write(os.Stdout, info)
+	return writeIntelOutput(w, globals, "version", info, nil)
 }

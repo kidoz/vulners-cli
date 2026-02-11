@@ -154,6 +154,7 @@ func run(cfg *config.Config, cli *icmd.CLI, deps *icmd.Deps, store cache.Store, 
 		kong.Name("vulners"),
 		kong.Description("CLI vulnerability scanner powered by Vulners"),
 		kong.UsageOnError(),
+		kong.Writers(os.Stderr, os.Stderr),
 		kong.ConfigureHelp(kong.HelpOptions{
 			Compact: true,
 		}),
@@ -172,7 +173,7 @@ func run(cfg *config.Config, cli *icmd.CLI, deps *icmd.Deps, store cache.Store, 
 	// NOT explicitly passed. This ensures --verbose beats quiet: true in YAML.
 	applyConfigFlags(cfg, cli, lvl)
 
-	if err := kongCtx.Run(cli, deps, store, logger); err != nil {
+	if err := kongCtx.Run(cli, deps, store, logger, kongCtx.Kong); err != nil {
 		var exitErr *model.ExitError
 		if errors.As(err, &exitErr) {
 			exitCode = int(exitErr.Code)

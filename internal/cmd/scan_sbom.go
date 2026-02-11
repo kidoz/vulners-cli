@@ -27,6 +27,10 @@ func (c *ScanSBOMCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store c
 
 	logger.Info("SBOM parsed", "components", len(components), "format", c.Format)
 
+	if globals.Plan {
+		return writePlanOutput(globals, c.File, components, deps)
+	}
+
 	var findings []model.Finding
 	if globals.Offline {
 		var offErr error

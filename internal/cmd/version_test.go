@@ -15,9 +15,14 @@ func TestVersionCmd_JSON(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	var info VersionInfo
-	require.NoError(t, json.Unmarshal(out, &info))
-	assert.NotEmpty(t, info.GoVersion)
+	var envelope IntelOutput
+	require.NoError(t, json.Unmarshal(out, &envelope))
+	assert.Equal(t, "1.0.0", envelope.SchemaVersion)
+	assert.Equal(t, "version", envelope.Command)
+
+	data, ok := envelope.Data.(map[string]any)
+	require.True(t, ok)
+	assert.NotEmpty(t, data["goVersion"])
 }
 
 func TestVersionCmd_Table(t *testing.T) {

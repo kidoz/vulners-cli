@@ -25,6 +25,8 @@ type CLI struct {
 	FailOn      string   `help:"Fail with exit code 1 if findings at or above severity (low, medium, high, critical)" default:""`
 	Ignore      []string `help:"CVE IDs to ignore"`
 	VEX         string   `help:"Path to OpenVEX document for suppression"`
+	Fields      []string `help:"Select top-level JSON fields to include in output (JSON only)" name:"fields"`
+	Plan        bool     `help:"Show what a scan would do without executing it" name:"plan"`
 
 	// Commands
 	Version      VersionCmd      `cmd:"" help:"Print version information"`
@@ -36,4 +38,8 @@ type CLI struct {
 	Offline_     OfflineCmd      `cmd:"" name:"offline" help:"Manage offline database"`
 	STIX         StixCmd         `cmd:"" name:"stix" help:"Export STIX bundle for a bulletin or CVE"`
 	Autocomplete AutocompleteCmd `cmd:"" help:"Autocomplete a Vulners search query"`
+	Suggest      SuggestCmd      `cmd:"" help:"Get field value suggestions for search queries"`
+	Doctor       DoctorCmd       `cmd:"" help:"Run environment health checks"`
+	Spec         SpecCmd         `cmd:"" help:"Output machine-readable command and flag definitions"`
+	Report       ReportCmd       `cmd:"" help:"Account-level vulnerability reports"`
 }

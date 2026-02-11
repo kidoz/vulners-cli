@@ -28,6 +28,12 @@ type Client interface {
 	MakeSTIXBundleByID(ctx context.Context, id string) (*vulners.StixBundle, error)
 	MakeSTIXBundleByCVE(ctx context.Context, cveID string) (*vulners.StixBundle, error)
 	QueryAutocomplete(ctx context.Context, query string) ([]string, error)
+	GetSuggestion(ctx context.Context, fieldName string) ([]string, error)
+	VulnsSummaryReport(ctx context.Context, limit, offset int) (*vulners.VulnsSummary, error)
+	VulnsList(ctx context.Context, limit, offset int) ([]vulners.VulnItem, error)
+	HostVulns(ctx context.Context, limit, offset int) ([]vulners.HostVuln, error)
+	ScanList(ctx context.Context, limit, offset int) ([]vulners.ScanItem, error)
+	IPSummaryReport(ctx context.Context) (*vulners.IPSummary, error)
 }
 
 // SearchResult wraps the Vulners search response.

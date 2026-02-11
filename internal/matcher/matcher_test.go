@@ -120,6 +120,30 @@ func (m *mockClient) QueryAutocomplete(context.Context, string) ([]string, error
 	return nil, nil
 }
 
+func (m *mockClient) GetSuggestion(context.Context, string) ([]string, error) {
+	return nil, nil
+}
+
+func (m *mockClient) VulnsSummaryReport(context.Context, int, int) (*vulners.VulnsSummary, error) {
+	return nil, nil
+}
+
+func (m *mockClient) VulnsList(context.Context, int, int) ([]vulners.VulnItem, error) {
+	return nil, nil
+}
+
+func (m *mockClient) HostVulns(context.Context, int, int) ([]vulners.HostVuln, error) {
+	return nil, nil
+}
+
+func (m *mockClient) ScanList(context.Context, int, int) ([]vulners.ScanItem, error) {
+	return nil, nil
+}
+
+func (m *mockClient) IPSummaryReport(context.Context) (*vulners.IPSummary, error) {
+	return nil, nil
+}
+
 func TestMatcher_Match_WithResults(t *testing.T) {
 	client := &mockClient{
 		searchFn: func(_ context.Context, query string, _, _ int) (*intel.SearchResult, error) {
