@@ -35,9 +35,9 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
         with:
           go-version: '1.25'
 
@@ -75,7 +75,7 @@ jobs:
 
       - name: Upload SARIF
         if: always() && inputs.output-format == 'sarif' && hashFiles('results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@b5ebac6f4c00c8ccddb7cdcd45fdb248329f808a # v3
+        uses: github/codeql-action/upload-sarif@33119e582d3ab4ed79c2610af108cb08ff983917 # v3
         with:
           sarif_file: results.sarif
           category: vulners
