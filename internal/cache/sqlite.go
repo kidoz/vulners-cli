@@ -42,6 +42,10 @@ func NewSQLiteStore(dbPath string, logger *slog.Logger) (*SQLiteStore, error) {
 		return nil, fmt.Errorf("migrating cache database: %w", err)
 	}
 
+	if err := os.Chmod(dbPath, 0o600); err != nil {
+		logger.Warn("could not set cache file permissions", "path", dbPath, "error", err)
+	}
+
 	return s, nil
 }
 

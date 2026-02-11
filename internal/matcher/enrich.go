@@ -138,26 +138,25 @@ func (e *Enricher) enrichIndividually(ctx context.Context, findings []model.Find
 }
 
 func enrichFinding(f *model.Finding, bulletin *vulners.Bulletin) {
-	if bulletin.CVSS != nil {
-		f.CVSS = bulletin.CVSS.Score
-		f.Severity = model.ScoreSeverity(bulletin.CVSS.Score)
+	rich := BulletinToFinding(bulletin, f.ComponentRef)
+	if rich.CVSS > 0 {
+		f.CVSS = rich.CVSS
+		f.Severity = rich.Severity
 	}
-	if bulletin.Type == "exploit" {
+	if rich.HasExploit {
 		f.HasExploit = true
 	}
 	if len(bulletin.CVEList) > 0 {
 		f.Aliases = mergeAliases(f.Aliases, bulletin.CVEList)
 	}
-	if bulletin.Href != "" {
-		f.References = append(f.References, bulletin.Href)
+	if len(rich.References) > 0 {
+		f.References = append(f.References, rich.References...)
 	}
-	if len(bulletin.Epss) > 0 && bulletin.Epss[0].Epss > 0 {
-		v := bulletin.Epss[0].Epss
-		f.EPSS = &v
+	if rich.EPSS != nil {
+		f.EPSS = rich.EPSS
 	}
-	if bulletin.AI != nil {
-		score := bulletin.AI.Score
-		f.AIScore = &score
+	if rich.AIScore != nil {
+		f.AIScore = rich.AIScore
 	}
 }
 

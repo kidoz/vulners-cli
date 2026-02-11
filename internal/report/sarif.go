@@ -96,34 +96,36 @@ func (r *SARIFReporter) Write(w io.Writer, data any) error {
 		},
 	}
 
-	if json.Unmarshal(raw, &scanOutput) == nil {
-		target := scanOutput.Target
-		if target == "" {
-			target = "."
-		}
+	if err := json.Unmarshal(raw, &scanOutput); err != nil {
+		return fmt.Errorf("parsing scan output for SARIF: %w", err)
+	}
 
-		seenRules := make(map[string]bool)
-		for _, f := range scanOutput.Findings {
-			if !seenRules[f.VulnID] {
-				seenRules[f.VulnID] = true
-				log.Runs[0].Tool.Driver.Rules = append(log.Runs[0].Tool.Driver.Rules, sarifRule{
-					ID:               f.VulnID,
-					ShortDescription: sarifMessage{Text: f.VulnID},
-					DefaultConfig:    sarifRuleConfig{Level: sarifLevel(f.Severity)},
-				})
-			}
+	target := scanOutput.Target
+	if target == "" {
+		target = "."
+	}
 
-			log.Runs[0].Results = append(log.Runs[0].Results, sarifResult{
-				RuleID:  f.VulnID,
-				Level:   sarifLevel(f.Severity),
-				Message: sarifMessage{Text: fmt.Sprintf("%s in %s", f.VulnID, f.ComponentRef)},
-				Locations: []sarifLocation{
-					{PhysicalLocation: sarifPhysicalLocation{
-						ArtifactLocation: sarifArtifactLocation{URI: target},
-					}},
-				},
+	seenRules := make(map[string]bool)
+	for _, f := range scanOutput.Findings {
+		if !seenRules[f.VulnID] {
+			seenRules[f.VulnID] = true
+			log.Runs[0].Tool.Driver.Rules = append(log.Runs[0].Tool.Driver.Rules, sarifRule{
+				ID:               f.VulnID,
+				ShortDescription: sarifMessage{Text: f.VulnID},
+				DefaultConfig:    sarifRuleConfig{Level: sarifLevel(f.Severity)},
 			})
 		}
+
+		log.Runs[0].Results = append(log.Runs[0].Results, sarifResult{
+			RuleID:  f.VulnID,
+			Level:   sarifLevel(f.Severity),
+			Message: sarifMessage{Text: fmt.Sprintf("%s in %s", f.VulnID, f.ComponentRef)},
+			Locations: []sarifLocation{
+				{PhysicalLocation: sarifPhysicalLocation{
+					ArtifactLocation: sarifArtifactLocation{URI: target},
+				}},
+			},
+		})
 	}
 
 	enc := json.NewEncoder(w)

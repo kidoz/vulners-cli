@@ -46,40 +46,7 @@ func (m *Matcher) Match(ctx context.Context, components []model.Component) ([]mo
 		}
 
 		for _, b := range result.Bulletins {
-			severity := "unknown"
-			var cvss float64
-			if b.CVSS3 != nil && b.CVSS3.Score > 0 {
-				cvss = b.CVSS3.Score
-				severity = model.ScoreSeverity(cvss)
-			} else if b.CVSS != nil {
-				cvss = b.CVSS.Score
-				severity = model.ScoreSeverity(cvss)
-			}
-
-			f := model.Finding{
-				VulnID:       b.ID,
-				Aliases:      b.CVEList,
-				Severity:     severity,
-				CVSS:         cvss,
-				HasExploit:   b.Type == "exploit",
-				ComponentRef: comp.Name + "@" + comp.Version,
-			}
-
-			if len(b.References) > 0 {
-				f.References = b.References
-			} else if b.Href != "" {
-				f.References = []string{b.Href}
-			}
-			if len(b.Epss) > 0 && b.Epss[0].Epss > 0 {
-				v := b.Epss[0].Epss
-				f.EPSS = &v
-			}
-			if b.AI != nil {
-				score := b.AI.Score
-				f.AIScore = &score
-			}
-
-			findings = append(findings, f)
+			findings = append(findings, BulletinToFinding(&b, comp.Name+"@"+comp.Version))
 		}
 	}
 

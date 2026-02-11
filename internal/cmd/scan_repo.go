@@ -100,23 +100,7 @@ func scanOfflineComponents(
 			continue
 		}
 		for _, b := range results {
-			severity := "unknown"
-			var cvss float64
-			if b.CVSS3 != nil && b.CVSS3.Score > 0 {
-				cvss = b.CVSS3.Score
-				severity = model.ScoreSeverity(cvss)
-			} else if b.CVSS != nil {
-				cvss = b.CVSS.Score
-				severity = model.ScoreSeverity(cvss)
-			}
-
-			findings = append(findings, model.Finding{
-				VulnID:       b.ID,
-				Aliases:      b.CVEList,
-				Severity:     severity,
-				CVSS:         cvss,
-				ComponentRef: comp.Name + "@" + comp.Version,
-			})
+			findings = append(findings, matcher.BulletinToFinding(&b, comp.Name+"@"+comp.Version))
 		}
 	}
 

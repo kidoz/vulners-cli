@@ -127,7 +127,10 @@ func TestCdxComponentType(t *testing.T) {
 }
 
 func TestGenerateUUID(t *testing.T) {
-	uuid := generateUUID()
+	uuid, err := generateUUID()
+	if err != nil {
+		t.Fatalf("generateUUID() error: %v", err)
+	}
 	if len(uuid) != 36 {
 		t.Errorf("UUID length = %d, want 36", len(uuid))
 	}
@@ -136,7 +139,10 @@ func TestGenerateUUID(t *testing.T) {
 		t.Errorf("UUID version byte = %c, want '4'", uuid[14])
 	}
 	// Each call should produce a different value.
-	uuid2 := generateUUID()
+	uuid2, err := generateUUID()
+	if err != nil {
+		t.Fatalf("generateUUID() error: %v", err)
+	}
 	if uuid == uuid2 {
 		t.Error("generateUUID() returned same value twice")
 	}
