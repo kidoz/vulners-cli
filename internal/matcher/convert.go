@@ -36,7 +36,7 @@ func BulletinToFinding(b *vulners.Bulletin, componentRef string) model.Finding {
 		f.EPSS = &v
 	}
 	if b.AI != nil {
-		f.AIScore = &b.AI.Score
+		f.AIScore = &b.AI.Value
 	}
 	return f
 }

@@ -7,7 +7,7 @@ require (
 	github.com/alecthomas/kong v1.14.0
 	github.com/anchore/syft v1.42.0
 	github.com/invopop/jsonschema v0.13.0
-	github.com/kidoz/go-vulners v1.1.3
+	github.com/kidoz/go-vulners v1.1.4
 	github.com/knadh/koanf/parsers/yaml v1.1.0
 	github.com/knadh/koanf/providers/confmap v1.0.0
 	github.com/knadh/koanf/providers/env v1.1.0

@@ -85,9 +85,10 @@ func convertSBOMFindings(packages []vulners.SBOMPackageResult) []model.Finding {
 				hasExploit = true
 			}
 			var aiScore *float64
-			if adv.AIScore != nil {
-				s := adv.AIScore.Score
-				aiScore = &s
+			if es := adv.GetEnchantmentsScore(); es != nil && es.Value > 0 {
+				aiScore = &es.Value
+			} else if adv.AIScore != nil && adv.AIScore.Value > 0 {
+				aiScore = &adv.AIScore.Value
 			}
 			findings = append(findings, model.Finding{
 				VulnID:        adv.ID,

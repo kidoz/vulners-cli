@@ -101,7 +101,7 @@ func (e *Enricher) enrichAIScores(ctx context.Context, findings []model.Finding)
 		if score == nil {
 			continue
 		}
-		findings[i].AIScore = &score.Score
+		findings[i].AIScore = &score.Value
 	}
 }
 

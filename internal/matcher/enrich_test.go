@@ -100,7 +100,7 @@ func TestEnricher_WithAIScore(t *testing.T) {
 			}, nil
 		},
 		getAIScoreFn: func(_ context.Context, _ string) (*vulners.AIScore, error) {
-			return &vulners.AIScore{Score: aiScore}, nil
+			return &vulners.AIScore{Value: aiScore}, nil
 		},
 	}
 
@@ -177,7 +177,7 @@ func TestEnrichFinding_WithAI(t *testing.T) {
 	f := model.Finding{VulnID: "CVE-2021-44228"}
 	b := vulners.Bulletin{
 		ID: "CVE-2021-44228",
-		AI: &vulners.AIScore{Score: 9.0},
+		AI: &vulners.AIScore{Value: 9.0},
 	}
 
 	enrichFinding(&f, &b)
