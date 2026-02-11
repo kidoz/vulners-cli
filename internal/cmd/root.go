@@ -45,4 +45,5 @@ type CLI struct {
 	Webhook      WebhookCmd      `cmd:"" help:"Manage search query webhooks"`
 	Subscription SubscriptionCmd `cmd:"" help:"Manage alert subscriptions"`
 	VScan        VScanCmd        `cmd:"" name:"vscan" help:"Manage VScanner remote vulnerability scans"`
+	MCP          MCPCmd          `cmd:"" name:"mcp" help:"Run as MCP (Model Context Protocol) server"`
 }

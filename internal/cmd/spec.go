@@ -1,11 +1,17 @@
 package cmd
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
+
 	"github.com/alecthomas/kong"
 )
 
 // SpecCmd outputs machine-readable command/flag definitions.
-type SpecCmd struct{}
+type SpecCmd struct {
+	Schema string `help:"Generate JSON Schema for a command's output (use 'list' to see available)" name:"schema" default:""`
+}
 
 // SpecOutput is the top-level JSON output of the spec command.
 type SpecOutput struct {
@@ -48,20 +54,46 @@ func (c *SpecCmd) Run(globals *CLI, k *kong.Kong) error {
 		return err
 	}
 
-	app := k.Model
-
-	output := SpecOutput{
-		Globals:  extractFlags(app.Flags),
-		Commands: extractCommands(app.Children),
-	}
-
 	w, closer, werr := outputWriter(globals)
 	if werr != nil {
 		return werr
 	}
 	defer func() { _ = closer() }()
 
+	// Handle --schema flag.
+	if c.Schema != "" {
+		return c.runSchema(w, globals)
+	}
+
+	app := k.Model
+	output := SpecOutput{
+		Globals:  extractFlags(app.Flags),
+		Commands: extractCommands(app.Children),
+	}
 	return writeIntelOutput(w, globals, "spec", output, nil)
+}
+
+func (c *SpecCmd) runSchema(w io.Writer, globals *CLI) error {
+	if c.Schema == "list" {
+		return writeIntelOutput(w, globals, "spec schema list", listSchemaCommands(), nil)
+	}
+
+	schema, err := generateSchema(c.Schema)
+	if err != nil {
+		return fmt.Errorf("generating schema: %w", err)
+	}
+
+	data, err := json.MarshalIndent(schema, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling schema: %w", err)
+	}
+
+	_, err = w.Write(data)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write([]byte("\n"))
+	return err
 }
 
 func extractCommands(nodes []*kong.Node) []SpecCommand {
