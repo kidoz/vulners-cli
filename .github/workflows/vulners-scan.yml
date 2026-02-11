@@ -75,7 +75,7 @@ jobs:
 
       - name: Upload SARIF
         if: always() && inputs.output-format == 'sarif' && hashFiles('results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@33119e582d3ab4ed79c2610af108cb08ff983917 # v3
+        uses: github/codeql-action/upload-sarif@b5ebac6f4c00c8ccddb7cdcd45fdb248329f808a # v3
         with:
           sarif_file: results.sarif
           category: vulners
