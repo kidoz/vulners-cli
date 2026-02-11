@@ -1,5 +1,7 @@
 # vulners-cli
 
+[![CI](https://github.com/kidoz/vulners-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/kidoz/vulners-cli/actions/workflows/ci.yml) [![Release](https://github.com/kidoz/vulners-cli/actions/workflows/release.yml/badge.svg)](https://github.com/kidoz/vulners-cli/actions/workflows/release.yml) [![Go Report Card](https://goreportcard.com/badge/github.com/kidoz/vulners-cli)](https://goreportcard.com/report/github.com/kidoz/vulners-cli) [![GitHub release](https://img.shields.io/github/v/release/kidoz/vulners-cli)](https://github.com/kidoz/vulners-cli/releases) [![License](https://img.shields.io/github/license/kidoz/vulners-cli)](LICENSE)
+
 Go-based CLI vulnerability scanner powered by [Vulners](https://vulners.com), using [go-vulners](https://github.com/kidoz/go-vulners) as the intelligence backend.
 
 Designed for Security Engineers, CI/CD pipelines, and AI agents needing deterministic JSON output.
