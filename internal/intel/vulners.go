@@ -22,6 +22,16 @@ var Version = "dev"
 // Default HTTP timeout for API requests.
 const defaultTimeout = 120 * time.Second
 
+// allFields requests all useful Bulletin fields from the API.
+var allFields = []string{
+	"id", "title", "description", "type", "bulletinFamily",
+	"cvss", "cvss2", "cvss3", "published", "modified",
+	"href", "sourceHref", "sourceData", "cvelist",
+	"epss", "affectedSoftware", "references",
+	"ai", "reporter", "vulnStatus", "enchantments",
+	"lastseen", "objectVersion",
+}
+
 // NewVulnersClient creates a new Vulners API client.
 func NewVulnersClient(apiKey string, logger *slog.Logger) (*VulnersClient, error) {
 	if apiKey == "" {
@@ -45,6 +55,7 @@ func (v *VulnersClient) Search(ctx context.Context, query string, limit, offset 
 	opts := []vulners.SearchOption{
 		vulners.WithLimit(limit),
 		vulners.WithOffset(offset),
+		vulners.WithFields(allFields...),
 	}
 
 	result, err := v.client.Search().SearchBulletins(ctx, query, opts...)
@@ -61,7 +72,7 @@ func (v *VulnersClient) Search(ctx context.Context, query string, limit, offset 
 func (v *VulnersClient) GetBulletin(ctx context.Context, id string) (*vulners.Bulletin, error) {
 	v.logger.Debug("getting bulletin", "id", id)
 
-	b, err := v.client.Search().GetBulletin(ctx, id)
+	b, err := v.client.Search().GetBulletin(ctx, id, vulners.WithFields(allFields...))
 	if err != nil {
 		return nil, fmt.Errorf("getting bulletin %s: %w", id, err)
 	}
@@ -145,6 +156,7 @@ func (v *VulnersClient) SearchExploits(ctx context.Context, query string, limit,
 	opts := []vulners.SearchOption{
 		vulners.WithLimit(limit),
 		vulners.WithOffset(offset),
+		vulners.WithFields(allFields...),
 	}
 
 	result, err := v.client.Search().SearchExploits(ctx, query, opts...)
@@ -161,7 +173,7 @@ func (v *VulnersClient) SearchExploits(ctx context.Context, query string, limit,
 func (v *VulnersClient) GetMultipleBulletins(ctx context.Context, ids []string) (map[string]vulners.Bulletin, error) {
 	v.logger.Debug("getting multiple bulletins", "count", len(ids))
 
-	result, err := v.client.Search().GetMultipleBulletins(ctx, ids)
+	result, err := v.client.Search().GetMultipleBulletins(ctx, ids, vulners.WithFields(allFields...))
 	if err != nil {
 		return nil, fmt.Errorf("getting multiple bulletins: %w", err)
 	}

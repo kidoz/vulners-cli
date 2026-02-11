@@ -48,41 +48,33 @@ func (c *ScanRepoCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store c
 	}
 
 	logger.Info("inventory collected", "components", len(components))
+	return scanComponents(ctx, globals, deps, store, logger, c.Path, components)
+}
 
+func scanComponents(
+	ctx context.Context,
+	globals *CLI,
+	deps *Deps,
+	store cache.Store,
+	logger *slog.Logger,
+	target string,
+	components []model.Component,
+) error {
 	var findings []model.Finding
+	var err error
 	if globals.Offline {
-		findings, err = c.scanOffline(ctx, store, components, logger)
+		findings, err = scanOfflineComponents(ctx, store, components, logger)
 	} else {
-		findings, err = c.scanOnline(ctx, deps, components, logger)
+		if deps.Intel == nil {
+			return fmt.Errorf("VULNERS_API_KEY is required for online scanning")
+		}
+		m := matcher.NewMatcher(deps.Intel, logger)
+		findings, err = m.Match(ctx, components)
 	}
 	if err != nil {
 		return err
 	}
-
-	return finalizeScan(globals, c.Path, components, findings)
-}
-
-func (c *ScanRepoCmd) scanOnline(
-	ctx context.Context,
-	deps *Deps,
-	components []model.Component,
-	logger *slog.Logger,
-) ([]model.Finding, error) {
-	if deps.Intel == nil {
-		return nil, fmt.Errorf("VULNERS_API_KEY is required for online scanning")
-	}
-
-	m := matcher.NewMatcher(deps.Intel, logger)
-	return m.Match(ctx, components)
-}
-
-func (c *ScanRepoCmd) scanOffline(
-	ctx context.Context,
-	store cache.Store,
-	components []model.Component,
-	logger *slog.Logger,
-) ([]model.Finding, error) {
-	return scanOfflineComponents(ctx, store, components, logger)
+	return finalizeScan(globals, target, components, findings)
 }
 
 func scanOfflineComponents(
@@ -110,7 +102,10 @@ func scanOfflineComponents(
 		for _, b := range results {
 			severity := "unknown"
 			var cvss float64
-			if b.CVSS != nil {
+			if b.CVSS3 != nil && b.CVSS3.Score > 0 {
+				cvss = b.CVSS3.Score
+				severity = model.ScoreSeverity(cvss)
+			} else if b.CVSS != nil {
 				cvss = b.CVSS.Score
 				severity = model.ScoreSeverity(cvss)
 			}
@@ -125,7 +120,18 @@ func scanOfflineComponents(
 		}
 	}
 
-	return findings, nil
+	// Deduplicate findings by VulnID + ComponentRef.
+	seen := make(map[string]struct{}, len(findings))
+	deduped := findings[:0]
+	for _, f := range findings {
+		key := f.VulnID + "|" + f.ComponentRef
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		deduped = append(deduped, f)
+	}
+	return deduped, nil
 }
 
 func newPolicy(globals *CLI) (*policy.Policy, error) {

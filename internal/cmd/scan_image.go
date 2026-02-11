@@ -7,8 +7,6 @@ import (
 
 	"github.com/kidoz/vulners-cli/internal/cache"
 	"github.com/kidoz/vulners-cli/internal/inventory"
-	"github.com/kidoz/vulners-cli/internal/matcher"
-	"github.com/kidoz/vulners-cli/internal/model"
 )
 
 // ScanImageCmd scans a container image (requires syft for SBOM generation).
@@ -24,20 +22,5 @@ func (c *ScanImageCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store 
 	}
 
 	logger.Info("image scanned", "components", len(components), "image", c.Image)
-
-	var findings []model.Finding
-	if globals.Offline {
-		findings, err = scanOfflineComponents(ctx, store, components, logger)
-	} else {
-		if deps.Intel == nil {
-			return fmt.Errorf("VULNERS_API_KEY is required for online scanning")
-		}
-		m := matcher.NewMatcher(deps.Intel, logger)
-		findings, err = m.Match(ctx, components)
-	}
-	if err != nil {
-		return err
-	}
-
-	return finalizeScan(globals, c.Image, components, findings)
+	return scanComponents(ctx, globals, deps, store, logger, c.Image, components)
 }

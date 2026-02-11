@@ -48,7 +48,10 @@ func (m *Matcher) Match(ctx context.Context, components []model.Component) ([]mo
 		for _, b := range result.Bulletins {
 			severity := "unknown"
 			var cvss float64
-			if b.CVSS != nil {
+			if b.CVSS3 != nil && b.CVSS3.Score > 0 {
+				cvss = b.CVSS3.Score
+				severity = model.ScoreSeverity(cvss)
+			} else if b.CVSS != nil {
 				cvss = b.CVSS.Score
 				severity = model.ScoreSeverity(cvss)
 			}
@@ -62,7 +65,9 @@ func (m *Matcher) Match(ctx context.Context, components []model.Component) ([]mo
 				ComponentRef: comp.Name + "@" + comp.Version,
 			}
 
-			if b.Href != "" {
+			if len(b.References) > 0 {
+				f.References = b.References
+			} else if b.Href != "" {
 				f.References = []string{b.Href}
 			}
 			if len(b.Epss) > 0 && b.Epss[0].Epss > 0 {
