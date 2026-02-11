@@ -26,7 +26,7 @@ func TestSummaryOnly_EmptyListsWithTopFindings(t *testing.T) {
 
 	cli := &CLI{Output: "json", SummaryOnly: true}
 	out := captureStdout(t, func() {
-		err := writeOutput(cli, ".", components, findings)
+		err := writeOutput(cli, ".", components, findings, nil)
 		require.NoError(t, err)
 	})
 
@@ -60,7 +60,7 @@ func TestSummaryOnly_FewerThan5(t *testing.T) {
 
 	cli := &CLI{Output: "json", SummaryOnly: true}
 	out := captureStdout(t, func() {
-		err := writeOutput(cli, ".", components, findings)
+		err := writeOutput(cli, ".", components, findings, nil)
 		require.NoError(t, err)
 	})
 
@@ -77,7 +77,7 @@ func TestSummaryOnly_NoFindings(t *testing.T) {
 
 	cli := &CLI{Output: "json", SummaryOnly: true}
 	out := captureStdout(t, func() {
-		err := writeOutput(cli, ".", components, nil)
+		err := writeOutput(cli, ".", components, nil, nil)
 		require.NoError(t, err)
 	})
 

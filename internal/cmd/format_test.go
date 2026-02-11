@@ -58,7 +58,7 @@ func TestOutputWriter_File(t *testing.T) {
 
 	// Stdout should be empty.
 	out := captureStdout(t, func() {
-		err := writeOutput(cli, ".", components, findings)
+		err := writeOutput(cli, ".", components, findings, nil)
 		require.NoError(t, err)
 	})
 	assert.Empty(t, out, "stdout should be empty when --output-file is set")

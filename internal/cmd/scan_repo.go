@@ -28,6 +28,21 @@ type ScanOutput struct {
 	TopFindings   []model.Finding   `json:"topFindings,omitempty"`
 	Truncated     bool              `json:"truncated,omitempty"`
 	TotalFindings int               `json:"totalFindings,omitempty"`
+	ImageMeta     *ImageMeta        `json:"imageMeta,omitempty"`
+}
+
+// ImageMeta provides image-specific context in scan output.
+type ImageMeta struct {
+	Distro      *DistroMeta `json:"distro,omitempty"`
+	OSPackages  int         `json:"osPackages"`
+	AppPackages int         `json:"appPackages"`
+	AuditMode   string      `json:"auditMode"` // "hybrid", "sbom", "offline"
+}
+
+// DistroMeta is the JSON-friendly distro info for scan output.
+type DistroMeta struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
 }
 
 // ScanSummary summarizes scan results.
@@ -178,7 +193,7 @@ func newPolicy(globals *CLI) (*policy.Policy, error) {
 	return p, nil
 }
 
-func finalizeScan(globals *CLI, target string, components []model.Component, findings []model.Finding) error {
+func finalizeScan(globals *CLI, target string, components []model.Component, findings []model.Finding, imageMeta ...*ImageMeta) error {
 	p, err := newPolicy(globals)
 	if err != nil {
 		return err
@@ -186,7 +201,12 @@ func finalizeScan(globals *CLI, target string, components []model.Component, fin
 	findings = p.Filter(findings)
 	exitCode := p.ExitCode(findings)
 
-	if writeErr := writeOutput(globals, target, components, findings); writeErr != nil {
+	var meta *ImageMeta
+	if len(imageMeta) > 0 {
+		meta = imageMeta[0]
+	}
+
+	if writeErr := writeOutput(globals, target, components, findings, meta); writeErr != nil {
 		return writeErr
 	}
 
@@ -196,7 +216,7 @@ func finalizeScan(globals *CLI, target string, components []model.Component, fin
 	return nil
 }
 
-func writeOutput(globals *CLI, target string, components []model.Component, findings []model.Finding) error {
+func writeOutput(globals *CLI, target string, components []model.Component, findings []model.Finding, imageMeta *ImageMeta) error {
 	if globals.Agent {
 		sortFindings(findings)
 	}
@@ -210,6 +230,7 @@ func writeOutput(globals *CLI, target string, components []model.Component, find
 		Components:    components,
 		Findings:      findings,
 		Summary:       summary,
+		ImageMeta:     imageMeta,
 	}
 
 	// --summary-only: keep summary + top 5 findings, drop full lists.

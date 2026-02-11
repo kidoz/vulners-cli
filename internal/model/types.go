@@ -34,6 +34,7 @@ type Component struct {
 	PURL      string   `json:"purl,omitempty"`
 	CPE       string   `json:"cpe,omitempty"`
 	Locations []string `json:"locations,omitempty"`
+	Ecosystem string   `json:"ecosystem,omitempty"` // "apk", "deb", "rpm", "npm", "go", etc.
 }
 
 // Finding represents a vulnerability finding for a component.

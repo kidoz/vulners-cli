@@ -37,7 +37,7 @@ func TestAgentMode_SortsFindingsInOutput(t *testing.T) {
 
 	cli := agentCLI()
 	out := captureStdout(t, func() {
-		err := writeOutput(cli, ".", components, findings)
+		err := writeOutput(cli, ".", components, findings, nil)
 		require.NoError(t, err)
 	})
 
@@ -63,7 +63,7 @@ func TestNonAgentMode_DoesNotSort(t *testing.T) {
 
 	cli := jsonCLI()
 	out := captureStdout(t, func() {
-		err := writeOutput(cli, ".", components, findings)
+		err := writeOutput(cli, ".", components, findings, nil)
 		require.NoError(t, err)
 	})
 

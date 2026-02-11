@@ -23,7 +23,7 @@ func TestMaxFindings_Truncates(t *testing.T) {
 
 	cli := &CLI{Output: "json", MaxFindings: 10}
 	out := captureStdout(t, func() {
-		err := writeOutput(cli, ".", components, findings)
+		err := writeOutput(cli, ".", components, findings, nil)
 		require.NoError(t, err)
 	})
 
@@ -45,7 +45,7 @@ func TestMaxFindings_NoTruncation(t *testing.T) {
 
 	cli := &CLI{Output: "json", MaxFindings: 10}
 	out := captureStdout(t, func() {
-		err := writeOutput(cli, ".", components, findings)
+		err := writeOutput(cli, ".", components, findings, nil)
 		require.NoError(t, err)
 	})
 
@@ -70,7 +70,7 @@ func TestMaxFindings_Zero_Unlimited(t *testing.T) {
 
 	cli := &CLI{Output: "json", MaxFindings: 0}
 	out := captureStdout(t, func() {
-		err := writeOutput(cli, ".", components, findings)
+		err := writeOutput(cli, ".", components, findings, nil)
 		require.NoError(t, err)
 	})
 
