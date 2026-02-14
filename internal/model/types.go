@@ -14,6 +14,7 @@ const (
 	OutputSARIF     OutputFormat = "sarif"
 	OutputHTML      OutputFormat = "html"
 	OutputCycloneDX OutputFormat = "cyclonedx"
+	OutputMarkdown  OutputFormat = "markdown"
 )
 
 // ExitCode represents the process exit code.

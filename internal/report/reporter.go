@@ -26,6 +26,8 @@ func New(format model.OutputFormat) Reporter {
 		return &HTMLReporter{}
 	case model.OutputCycloneDX:
 		return &CycloneDXReporter{}
+	case model.OutputMarkdown:
+		return &MarkdownReporter{}
 	default:
 		return &JSONReporter{}
 	}

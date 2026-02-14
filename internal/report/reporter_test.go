@@ -18,6 +18,7 @@ func TestNew_ReturnsCorrectType(t *testing.T) {
 		{model.OutputSARIF},
 		{model.OutputHTML},
 		{model.OutputCycloneDX},
+		{model.OutputMarkdown},
 		{"unknown"},
 	}
 	for _, tt := range tests {
@@ -230,6 +231,115 @@ func TestTruncate(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("truncate(%q, %d) = %q, want %q", tt.input, tt.max, got, tt.want)
 		}
+	}
+}
+
+func TestMarkdownReporter_WriteScan(t *testing.T) {
+	r := &MarkdownReporter{}
+	var buf bytes.Buffer
+
+	data := mdData{
+		Target: "test-repo",
+		Findings: []mdFinding{
+			{VulnID: "CVE-2024-1234", Severity: "critical", CVSS: 9.8, ComponentRef: "openssl@3.0.2", Fix: "3.0.2-1"},
+			{VulnID: "CVE-2024-5678", Severity: "high", CVSS: 8.1, ComponentRef: "curl@7.81.0", Fix: "7.81.0-2"},
+		},
+		Summary: mdSummary{
+			ComponentCount: 142,
+			FindingCount:   2,
+			Critical:       1,
+			High:           1,
+		},
+	}
+
+	if err := r.Write(&buf, data); err != nil {
+		t.Fatalf("MarkdownReporter.Write() error: %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "# Scan Report: test-repo") {
+		t.Error("missing heading")
+	}
+	if !strings.Contains(out, "## Summary") {
+		t.Error("missing summary section")
+	}
+	if !strings.Contains(out, "| Components | 142 |") {
+		t.Error("missing component count")
+	}
+	if !strings.Contains(out, "## Findings") {
+		t.Error("missing findings section")
+	}
+	if !strings.Contains(out, "CVE-2024-1234") {
+		t.Error("missing finding ID")
+	}
+	if !strings.Contains(out, "CRITICAL") {
+		t.Error("severity should be uppercased")
+	}
+}
+
+func TestMarkdownReporter_WriteNoFindings(t *testing.T) {
+	r := &MarkdownReporter{}
+	var buf bytes.Buffer
+
+	data := mdData{Target: "empty-scan"}
+	if err := r.Write(&buf, data); err != nil {
+		t.Fatalf("MarkdownReporter.Write() error: %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "No findings") {
+		t.Error("expected 'No findings' for empty scan")
+	}
+}
+
+func TestMarkdownReporter_WriteGeneric(t *testing.T) {
+	r := &MarkdownReporter{}
+	var buf bytes.Buffer
+
+	data := []map[string]string{
+		{"name": "foo", "version": "1.0"},
+		{"name": "bar", "version": "2.0"},
+	}
+	if err := r.Write(&buf, data); err != nil {
+		t.Fatalf("MarkdownReporter.Write() error: %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "| name") {
+		t.Error("missing header row")
+	}
+	if !strings.Contains(out, "| foo") {
+		t.Error("missing data row")
+	}
+	if !strings.Contains(out, "---") {
+		t.Error("missing separator row")
+	}
+}
+
+func TestMarkdownReporter_WriteMap(t *testing.T) {
+	r := &MarkdownReporter{}
+	var buf bytes.Buffer
+
+	data := map[string]string{"status": "ok", "count": "5"}
+	if err := r.Write(&buf, data); err != nil {
+		t.Fatalf("MarkdownReporter.Write() error: %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "| Key | Value |") {
+		t.Error("missing key-value header")
+	}
+	if !strings.Contains(out, "| status | ok |") {
+		t.Error("missing key-value row")
+	}
+}
+
+func TestEscapeMD(t *testing.T) {
+	if got := escapeMD("foo|bar"); got != "foo\\|bar" {
+		t.Errorf("escapeMD(\"foo|bar\") = %q, want %q", got, "foo\\|bar")
+	}
+	if got := escapeMD("no pipes"); got != "no pipes" {
+		t.Errorf("escapeMD(\"no pipes\") = %q, want %q", got, "no pipes")
 	}
 }
 

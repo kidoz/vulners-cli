@@ -13,7 +13,7 @@ const ExitRuntimeError = model.ExitRuntimeError
 // CLI is the root Kong command structure.
 type CLI struct {
 	// Global flags
-	Output      string   `help:"Output format (json, table, sarif, html, cyclonedx)" enum:"json,table,sarif,html,cyclonedx" default:"json"`
+	Output      string   `help:"Output format (json, table, sarif, html, cyclonedx, markdown)" enum:"json,table,sarif,html,cyclonedx,markdown" default:"json"`
 	Quiet       bool     `help:"Suppress non-error output" short:"q"`
 	Verbose     bool     `help:"Enable verbose/debug output" short:"v"`
 	Offline     bool     `help:"Use offline database only"`
