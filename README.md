@@ -8,6 +8,12 @@ Designed for Security Engineers, CI/CD pipelines, and AI agents needing determin
 
 ## Install
 
+### Homebrew (macOS)
+
+```bash
+brew install kidoz/vulners/vulners-cli
+```
+
 ### From source
 
 ```bash
