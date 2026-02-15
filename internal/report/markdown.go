@@ -56,30 +56,30 @@ func (r *MarkdownReporter) Write(w io.Writer, data any) error {
 }
 
 func writeScanMarkdown(w io.Writer, d mdData) error {
-	fmt.Fprintf(w, "# Scan Report: %s\n\n", escapeMD(d.Target))
+	_, _ = fmt.Fprintf(w, "# Scan Report: %s\n\n", escapeMD(d.Target))
 
 	// Summary table.
-	fmt.Fprint(w, "## Summary\n\n")
-	fmt.Fprintln(w, "| Metric | Count |")
-	fmt.Fprintln(w, "|--------|-------|")
-	fmt.Fprintf(w, "| Components | %d |\n", d.Summary.ComponentCount)
-	fmt.Fprintf(w, "| Findings | %d |\n", d.Summary.FindingCount)
-	fmt.Fprintf(w, "| Critical | %d |\n", d.Summary.Critical)
-	fmt.Fprintf(w, "| High | %d |\n", d.Summary.High)
-	fmt.Fprintf(w, "| Medium | %d |\n", d.Summary.Medium)
-	fmt.Fprintf(w, "| Low | %d |\n", d.Summary.Low)
+	_, _ = fmt.Fprint(w, "## Summary\n\n")
+	_, _ = fmt.Fprintln(w, "| Metric | Count |")
+	_, _ = fmt.Fprintln(w, "|--------|-------|")
+	_, _ = fmt.Fprintf(w, "| Components | %d |\n", d.Summary.ComponentCount)
+	_, _ = fmt.Fprintf(w, "| Findings | %d |\n", d.Summary.FindingCount)
+	_, _ = fmt.Fprintf(w, "| Critical | %d |\n", d.Summary.Critical)
+	_, _ = fmt.Fprintf(w, "| High | %d |\n", d.Summary.High)
+	_, _ = fmt.Fprintf(w, "| Medium | %d |\n", d.Summary.Medium)
+	_, _ = fmt.Fprintf(w, "| Low | %d |\n", d.Summary.Low)
 
 	// Findings table.
-	fmt.Fprint(w, "\n## Findings\n\n")
+	_, _ = fmt.Fprint(w, "\n## Findings\n\n")
 	if len(d.Findings) == 0 {
-		fmt.Fprintln(w, "No findings.")
+		_, _ = fmt.Fprintln(w, "No findings.")
 		return nil
 	}
 
-	fmt.Fprintln(w, "| Severity | ID | Component | CVSS | Fix |")
-	fmt.Fprintln(w, "|----------|----|-----------|------|-----|")
+	_, _ = fmt.Fprintln(w, "| Severity | ID | Component | CVSS | Fix |")
+	_, _ = fmt.Fprintln(w, "|----------|----|-----------|------|-----|")
 	for _, f := range d.Findings {
-		fmt.Fprintf(w, "| %s | %s | %s | %.1f | %s |\n",
+		_, _ = fmt.Fprintf(w, "| %s | %s | %s | %.1f | %s |\n",
 			escapeMD(strings.ToUpper(f.Severity)),
 			escapeMD(f.VulnID),
 			escapeMD(f.ComponentRef),
@@ -98,21 +98,21 @@ func writeGenericMarkdown(w io.Writer, data any) error {
 	case map[string]any:
 		writeMapMarkdown(w, v)
 	default:
-		fmt.Fprintf(w, "%v\n", data)
+		_, _ = fmt.Fprintf(w, "%v\n", data)
 	}
 	return nil
 }
 
 func writeSliceMarkdown(w io.Writer, items []any) error {
 	if len(items) == 0 {
-		fmt.Fprintln(w, "(no results)")
+		_, _ = fmt.Fprintln(w, "(no results)")
 		return nil
 	}
 
 	first, ok := items[0].(map[string]any)
 	if !ok {
 		for _, item := range items {
-			fmt.Fprintf(w, "%v\n", item)
+			_, _ = fmt.Fprintf(w, "%v\n", item)
 		}
 		return nil
 	}
@@ -120,13 +120,13 @@ func writeSliceMarkdown(w io.Writer, items []any) error {
 	keys := sortedKeys(first)
 
 	// Header row.
-	fmt.Fprintf(w, "| %s |\n", strings.Join(keys, " | "))
+	_, _ = fmt.Fprintf(w, "| %s |\n", strings.Join(keys, " | "))
 	// Separator row.
 	seps := make([]string, len(keys))
 	for i := range seps {
 		seps[i] = "---"
 	}
-	fmt.Fprintf(w, "| %s |\n", strings.Join(seps, " | "))
+	_, _ = fmt.Fprintf(w, "| %s |\n", strings.Join(seps, " | "))
 
 	// Data rows.
 	for _, item := range items {
@@ -138,17 +138,17 @@ func writeSliceMarkdown(w io.Writer, items []any) error {
 		for i, k := range keys {
 			vals[i] = escapeMD(truncate(fmt.Sprintf("%v", row[k]), 80))
 		}
-		fmt.Fprintf(w, "| %s |\n", strings.Join(vals, " | "))
+		_, _ = fmt.Fprintf(w, "| %s |\n", strings.Join(vals, " | "))
 	}
 
 	return nil
 }
 
 func writeMapMarkdown(w io.Writer, m map[string]any) {
-	fmt.Fprintln(w, "| Key | Value |")
-	fmt.Fprintln(w, "|-----|-------|")
+	_, _ = fmt.Fprintln(w, "| Key | Value |")
+	_, _ = fmt.Fprintln(w, "|-----|-------|")
 	for _, k := range sortedKeys(m) {
-		fmt.Fprintf(w, "| %s | %s |\n",
+		_, _ = fmt.Fprintf(w, "| %s | %s |\n",
 			escapeMD(k),
 			escapeMD(truncate(fmt.Sprintf("%v", m[k]), 120)),
 		)
