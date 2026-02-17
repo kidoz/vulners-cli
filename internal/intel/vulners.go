@@ -203,7 +203,7 @@ func (v *VulnersClient) GetBulletinHistory(ctx context.Context, id string) ([]vu
 	return history, nil
 }
 
-func (v *VulnersClient) HostAudit(ctx context.Context, osName, osVersion string, packages []vulners.AuditItem) (*vulners.AuditResult, error) {
+func (v *VulnersClient) HostAudit(ctx context.Context, osName, osVersion string, packages []vulners.AuditItem) (*vulners.SoftwareAuditResult, error) {
 	v.logger.Debug("host audit", "os", osName, "version", osVersion, "packages", len(packages))
 
 	result, err := v.client.Audit().Host(ctx, osName, osVersion, packages)

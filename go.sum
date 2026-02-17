@@ -650,8 +650,8 @@ github.com/kastenhq/goversion v0.0.0-20230811215019-93b2f8823953 h1:WdAeg/imY2JF
 github.com/kastenhq/goversion v0.0.0-20230811215019-93b2f8823953/go.mod h1:6o+UrvuZWc4UTyBhQf0LGjW9Ld7qJxLz/OqvSOWWlEc=
 github.com/kevinburke/ssh_config v1.5.0 h1:3cPZmE54xb5j3G5xQCjSvokqNwU2uW+3ry1+PRLSPpA=
 github.com/kevinburke/ssh_config v1.5.0/go.mod h1:q2RIzfka+BXARoNexmF9gkxEX7DmvbW9P4hIVx2Kg4M=
-github.com/kidoz/go-vulners v1.1.5 h1:oz8zH9qUiHLKan3tM3qO9cuUpLGan8qW1DRD2f21uTY=
-github.com/kidoz/go-vulners v1.1.5/go.mod h1:jeXvz333Ep14fT8+F10CprySSb35Q/xUrOdMqAVCR5Y=
+github.com/kidoz/go-vulners v1.2.0 h1:IoVI4ge1DejAd9GoYpH55HZD8zCJu0FKWiWR6ZtatWU=
+github.com/kidoz/go-vulners v1.2.0/go.mod h1:jeXvz333Ep14fT8+F10CprySSb35Q/xUrOdMqAVCR5Y=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/klauspost/compress v1.4.1/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=

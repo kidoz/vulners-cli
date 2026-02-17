@@ -20,7 +20,7 @@ type mockIntelClient struct {
 	searchCPEFn             func(ctx context.Context, product, vendor string, limit int) (*vulners.CPESearchResult, error)
 	linuxAuditFn            func(ctx context.Context, osName, osVersion string, packages []string) (*vulners.AuditResult, error)
 	kbAuditFn               func(ctx context.Context, os string, kbList []string) (*vulners.AuditResult, error)
-	hostAuditFn             func(ctx context.Context, osName, osVersion string, packages []vulners.AuditItem) (*vulners.AuditResult, error)
+	hostAuditFn             func(ctx context.Context, osName, osVersion string, packages []vulners.AuditItem) (*vulners.SoftwareAuditResult, error)
 	winAuditFn              func(ctx context.Context, osName, osVersion string, kbList []string, software []vulners.WinAuditItem) (*vulners.AuditResult, error)
 	sbomAuditFn             func(ctx context.Context, sbom io.Reader) (*vulners.SBOMAuditResult, error)
 	fetchCollectionFn       func(ctx context.Context, collType vulners.CollectionType) ([]vulners.Bulletin, error)
@@ -112,11 +112,11 @@ func (m *mockIntelClient) KBAudit(ctx context.Context, os string, kbList []strin
 	return &vulners.AuditResult{}, nil
 }
 
-func (m *mockIntelClient) HostAudit(ctx context.Context, osName, osVersion string, packages []vulners.AuditItem) (*vulners.AuditResult, error) {
+func (m *mockIntelClient) HostAudit(ctx context.Context, osName, osVersion string, packages []vulners.AuditItem) (*vulners.SoftwareAuditResult, error) {
 	if m.hostAuditFn != nil {
 		return m.hostAuditFn(ctx, osName, osVersion, packages)
 	}
-	return &vulners.AuditResult{}, nil
+	return &vulners.SoftwareAuditResult{}, nil
 }
 
 func (m *mockIntelClient) WinAudit(ctx context.Context, osName, osVersion string, kbList []string, software []vulners.WinAuditItem) (*vulners.AuditResult, error) {

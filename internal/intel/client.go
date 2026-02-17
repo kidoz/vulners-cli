@@ -19,7 +19,7 @@ type Client interface {
 	SearchCPE(ctx context.Context, product, vendor string, limit int) (*vulners.CPESearchResult, error)
 	LinuxAudit(ctx context.Context, osName, osVersion string, packages []string) (*vulners.AuditResult, error)
 	KBAudit(ctx context.Context, os string, kbList []string) (*vulners.AuditResult, error)
-	HostAudit(ctx context.Context, osName, osVersion string, packages []vulners.AuditItem) (*vulners.AuditResult, error)
+	HostAudit(ctx context.Context, osName, osVersion string, packages []vulners.AuditItem) (*vulners.SoftwareAuditResult, error)
 	WinAudit(ctx context.Context, osName, osVersion string, kbList []string, software []vulners.WinAuditItem) (*vulners.AuditResult, error)
 	SBOMAudit(ctx context.Context, sbom io.Reader) (*vulners.SBOMAuditResult, error)
 	FetchCollection(ctx context.Context, collType vulners.CollectionType) ([]vulners.Bulletin, error)

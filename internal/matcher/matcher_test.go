@@ -88,7 +88,7 @@ func (m *mockClient) KBAudit(context.Context, string, []string) (*vulners.AuditR
 	return nil, nil
 }
 
-func (m *mockClient) HostAudit(context.Context, string, string, []vulners.AuditItem) (*vulners.AuditResult, error) {
+func (m *mockClient) HostAudit(context.Context, string, string, []vulners.AuditItem) (*vulners.SoftwareAuditResult, error) {
 	return nil, nil
 }
 
