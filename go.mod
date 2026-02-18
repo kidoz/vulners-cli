@@ -18,7 +18,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/fx v1.24.0
 	golang.org/x/vuln v1.1.4
-	modernc.org/sqlite v1.45.0
+	modernc.org/sqlite v1.46.0
 )
 
 require (
