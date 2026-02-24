@@ -6,4 +6,5 @@ type ScanCmd struct {
 	SBOM  ScanSBOMCmd  `cmd:"" name:"sbom" help:"Scan an SBOM file"`
 	Image ScanImageCmd `cmd:"" help:"Scan a container image"`
 	Dir   ScanDirCmd   `cmd:"" help:"Scan a directory for package manifests"`
+	Host  ScanHostCmd  `cmd:"" help:"Scan a local or remote host"`
 }

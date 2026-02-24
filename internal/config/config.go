@@ -15,7 +15,7 @@ import (
 
 // Config holds the application configuration.
 type Config struct {
-	APIKey        string `koanf:"api_key"`
+	APIKey        string `koanf:"api_key"` //nolint:gosec
 	DBPath        string `koanf:"db_path"`
 	Verbose       bool   `koanf:"verbose"`
 	Quiet         bool   `koanf:"quiet"`

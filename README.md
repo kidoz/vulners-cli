@@ -92,6 +92,12 @@ vulners audit winaudit --os "Windows 10" --version "19045" --kb KB5034441 --soft
 ### Scan commands
 
 ```bash
+# Scan a local or remote host (agentless via SSH or WinRM)
+vulners scan host local
+vulners scan host ssh://user@192.168.1.10 --ask-pass
+vulners scan host ssh://user@192.168.1.10 --identity-file ~/.ssh/id_rsa
+vulners scan host winrms://Administrator@192.168.1.20 --password-env WIN_PASS
+
 # Scan a Go repository (reachability-aware via govulncheck)
 vulners scan repo .
 vulners scan repo /path/to/project
@@ -335,7 +341,7 @@ just clean
 
 ### Requirements
 
-- Go >= 1.25
+- Go >= 1.26
 - [just](https://github.com/casey/just) task runner
 - golangci-lint v2
 - gofumpt
