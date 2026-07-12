@@ -7,4 +7,5 @@ type ScanCmd struct {
 	Image ScanImageCmd `cmd:"" help:"Scan a container image"`
 	Dir   ScanDirCmd   `cmd:"" help:"Scan a directory for package manifests"`
 	Host  ScanHostCmd  `cmd:"" help:"Scan a local or remote host"`
+	Web   ScanWebCmd   `cmd:"" help:"Check web application paths for vulnerabilities"`
 }
