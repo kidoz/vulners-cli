@@ -125,25 +125,21 @@ Image scanning automatically detects the OS distribution and uses specialized AP
 
 ```bash
 # Manage projects
+vulners vscan license
 vulners vscan project list
-vulners vscan project create --name "Production"
-vulners vscan project get <project-id>
+vulners vscan project create --name "Production" --license <license-id>
+vulners vscan project stats <project-id> --stat total_hosts,unique_cve
+vulners vscan project update <project-id> --name "Production" --license <license-id>
 
 # Manage scan tasks
 vulners vscan task list <project-id>
-vulners vscan task create <project-id> --name "Web Servers" --targets 10.0.0.0/24 --scan-type normal
+vulners vscan task create <project-id> --name "Web Servers" --networks 10.0.0.0/24 --ports 1-1000 --timing normal
 vulners vscan task start <project-id> <task-id>
-vulners vscan task stop <project-id> <task-id>
+vulners vscan task delete <project-id> <task-id>
 
 # Access results
 vulners vscan result list <project-id>
-vulners vscan result stats <project-id> <result-id>
-vulners vscan result hosts <project-id> <result-id>
-vulners vscan result vulns <project-id> <result-id>
-vulners vscan result export <project-id> <result-id> --format pdf
-
-# License info
-vulners vscan license
+vulners vscan result delete <project-id> <result-id>
 ```
 
 ### Webhooks & subscriptions
