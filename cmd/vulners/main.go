@@ -71,7 +71,7 @@ func provideLogger(cfg *config.Config, cli *icmd.CLI) (*slog.Logger, *slog.Level
 
 	var handler slog.Handler
 	if useColor {
-		handler = tint.NewHandler(os.Stderr, &tint.Options{
+		handler = tint.NewTextHandler(os.Stderr, &tint.Options{
 			Level:      lvl,
 			TimeFormat: time.Kitchen,
 		})
