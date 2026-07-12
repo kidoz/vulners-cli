@@ -26,10 +26,10 @@ func requireVScanner(deps *Deps) error {
 
 type VScanProjectCmd struct {
 	List   VScanProjectListCmd   `cmd:"" help:"List all projects"`
-	Get    VScanProjectGetCmd    `cmd:"" help:"Get a project by ID"`
 	Create VScanProjectCreateCmd `cmd:"" help:"Create a new project"`
 	Update VScanProjectUpdateCmd `cmd:"" help:"Update a project"`
 	Delete VScanProjectDeleteCmd `cmd:"" help:"Delete a project"`
+	Stats  VScanProjectStatsCmd  `cmd:"" help:"Get project statistics"`
 }
 
 type VScanProjectListCmd struct {
@@ -56,33 +56,13 @@ func (c *VScanProjectListCmd) Run(ctx context.Context, globals *CLI, deps *Deps)
 	return writeIntelOutput(w, globals, "vscan project list", result, nil)
 }
 
-type VScanProjectGetCmd struct {
-	ID string `arg:"" help:"Project ID"`
-}
-
-func (c *VScanProjectGetCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
-	if err := validateNonScanFormat(globals.Output); err != nil {
-		return err
-	}
-	if err := requireVScanner(deps); err != nil {
-		return err
-	}
-	result, err := deps.VScanner.GetProject(ctx, c.ID)
-	if err != nil {
-		return fmt.Errorf("getting project: %w", err)
-	}
-	w, closer, werr := outputWriter(globals)
-	if werr != nil {
-		return werr
-	}
-	defer func() { _ = closer() }()
-	return writeIntelOutput(w, globals, "vscan project get", result, nil)
-}
-
 type VScanProjectCreateCmd struct {
-	Name        string `help:"Project name" required:""`
-	Description string `help:"Project description" default:""`
-	License     string `help:"License ID to use" default:""`
+	Name           string   `help:"Project name" required:""`
+	License        string   `help:"License ID to use" required:""`
+	Notify         string   `help:"Notification period" enum:"disabled,asap,hourly,daily" default:"disabled"`
+	Email          []string `help:"Notification email address"`
+	Slack          []string `help:"Notification Slack webhook"`
+	ResultExpireIn int      `help:"Result retention in days (0 = never)" default:"0" name:"result-expire-in"`
 }
 
 func (c *VScanProjectCreateCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
@@ -92,11 +72,7 @@ func (c *VScanProjectCreateCmd) Run(ctx context.Context, globals *CLI, deps *Dep
 	if err := requireVScanner(deps); err != nil {
 		return err
 	}
-	req := &vscanner.ProjectRequest{
-		Name:        c.Name,
-		Description: c.Description,
-		License:     c.License,
-	}
+	req := newVScannerProjectRequest(c.Name, c.License, c.Notify, c.Email, c.Slack, c.ResultExpireIn)
 	result, err := deps.VScanner.CreateProject(ctx, req)
 	if err != nil {
 		return fmt.Errorf("creating project: %w", err)
@@ -110,9 +86,13 @@ func (c *VScanProjectCreateCmd) Run(ctx context.Context, globals *CLI, deps *Dep
 }
 
 type VScanProjectUpdateCmd struct {
-	ID          string `arg:"" help:"Project ID"`
-	Name        string `help:"Project name" required:""`
-	Description string `help:"Project description" default:""`
+	ID             string   `arg:"" help:"Project ID"`
+	Name           string   `help:"Project name" required:""`
+	License        string   `help:"License ID to use" required:""`
+	Notify         string   `help:"Notification period" enum:"disabled,asap,hourly,daily" default:"disabled"`
+	Email          []string `help:"Notification email address"`
+	Slack          []string `help:"Notification Slack webhook"`
+	ResultExpireIn int      `help:"Result retention in days (0 = never)" default:"0" name:"result-expire-in"`
 }
 
 func (c *VScanProjectUpdateCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
@@ -122,10 +102,7 @@ func (c *VScanProjectUpdateCmd) Run(ctx context.Context, globals *CLI, deps *Dep
 	if err := requireVScanner(deps); err != nil {
 		return err
 	}
-	req := &vscanner.ProjectRequest{
-		Name:        c.Name,
-		Description: c.Description,
-	}
+	req := newVScannerProjectRequest(c.Name, c.License, c.Notify, c.Email, c.Slack, c.ResultExpireIn)
 	result, err := deps.VScanner.UpdateProject(ctx, c.ID, req)
 	if err != nil {
 		return fmt.Errorf("updating project: %w", err)
@@ -160,15 +137,49 @@ func (c *VScanProjectDeleteCmd) Run(ctx context.Context, globals *CLI, deps *Dep
 	return writeIntelOutput(w, globals, "vscan project delete", map[string]any{"id": c.ID, "deleted": true}, nil)
 }
 
+type VScanProjectStatsCmd struct {
+	ProjectID string   `arg:"" help:"Project ID"`
+	Stat      []string `help:"Statistic aggregation" enum:"total_hosts,vulnerable_hosts,unique_cve,min_max_cvss,vulnerabilities_rank,vulnerable_hosts_rank" required:""`
+}
+
+func (c *VScanProjectStatsCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
+	if err := validateNonScanFormat(globals.Output); err != nil {
+		return err
+	}
+	if err := requireVScanner(deps); err != nil {
+		return err
+	}
+	result, err := deps.VScanner.GetProjectStatistics(ctx, c.ProjectID, c.Stat)
+	if err != nil {
+		return fmt.Errorf("getting project statistics: %w", err)
+	}
+	w, closer, werr := outputWriter(globals)
+	if werr != nil {
+		return werr
+	}
+	defer func() { _ = closer() }()
+	return writeIntelOutput(w, globals, "vscan project stats", result, nil)
+}
+
+func newVScannerProjectRequest(name, license, notify string, email, slack []string, resultExpireIn int) *vscanner.ProjectRequest {
+	req := &vscanner.ProjectRequest{
+		Name:         name,
+		LicenseID:    license,
+		Notification: vscanner.NewNotification(notify, email, slack),
+	}
+	if resultExpireIn > 0 {
+		req.ResultExpireIn = &resultExpireIn
+	}
+	return req
+}
+
 // --- Task subcommands ---
 
 type VScanTaskCmd struct {
 	List   VScanTaskListCmd   `cmd:"" help:"List tasks in a project"`
-	Get    VScanTaskGetCmd    `cmd:"" help:"Get a task by ID"`
 	Create VScanTaskCreateCmd `cmd:"" help:"Create a scan task"`
 	Update VScanTaskUpdateCmd `cmd:"" help:"Update a scan task"`
 	Start  VScanTaskStartCmd  `cmd:"" help:"Start a scan task"`
-	Stop   VScanTaskStopCmd   `cmd:"" help:"Stop a running scan task"`
 	Delete VScanTaskDeleteCmd `cmd:"" help:"Delete a scan task"`
 }
 
@@ -197,38 +208,14 @@ func (c *VScanTaskListCmd) Run(ctx context.Context, globals *CLI, deps *Deps) er
 	return writeIntelOutput(w, globals, "vscan task list", result, nil)
 }
 
-type VScanTaskGetCmd struct {
-	ProjectID string `arg:"" help:"Project ID"`
-	TaskID    string `arg:"" help:"Task ID"`
-}
-
-func (c *VScanTaskGetCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
-	if err := validateNonScanFormat(globals.Output); err != nil {
-		return err
-	}
-	if err := requireVScanner(deps); err != nil {
-		return err
-	}
-	result, err := deps.VScanner.GetTask(ctx, c.ProjectID, c.TaskID)
-	if err != nil {
-		return fmt.Errorf("getting task: %w", err)
-	}
-	w, closer, werr := outputWriter(globals)
-	if werr != nil {
-		return werr
-	}
-	defer func() { _ = closer() }()
-	return writeIntelOutput(w, globals, "vscan task get", result, nil)
-}
-
 type VScanTaskCreateCmd struct {
-	ProjectID      string   `arg:"" help:"Project ID"`
-	Name           string   `help:"Task name" required:""`
-	Description    string   `help:"Task description" default:""`
-	Targets        []string `help:"Scan targets (IPs, hostnames, CIDR ranges)" required:""`
-	ScanType       string   `help:"Scan type" enum:"fast,normal,full" default:"normal" name:"scan-type"`
-	Ports          string   `help:"Port range or list (e.g. 1-1000, 22,80,443)" default:""`
-	MaxConcurrency int      `help:"Maximum concurrent scan threads" default:"0" name:"max-concurrency"`
+	ProjectID string   `arg:"" help:"Project ID"`
+	Name      string   `help:"Task name" required:""`
+	Networks  []string `help:"Networks to scan (IP, hostname, or CIDR)" required:""`
+	Ports     []string `help:"Port or port range (e.g. 22 or 1-1000)" required:""`
+	Schedule  string   `help:"Crontab schedule"`
+	Timing    string   `help:"Scanner timing profile" default:"normal"`
+	Enabled   bool     `help:"Enable the scheduled task" default:"true"`
 }
 
 func (c *VScanTaskCreateCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
@@ -239,14 +226,12 @@ func (c *VScanTaskCreateCmd) Run(ctx context.Context, globals *CLI, deps *Deps) 
 		return err
 	}
 	req := &vscanner.TaskRequest{
-		Name:        c.Name,
-		Description: c.Description,
-		Targets:     c.Targets,
-		Config: &vscanner.TaskConfig{
-			ScanType:       c.ScanType,
-			Ports:          c.Ports,
-			MaxConcurrency: c.MaxConcurrency,
-		},
+		Name:     c.Name,
+		Networks: c.Networks,
+		Ports:    c.Ports,
+		Schedule: c.Schedule,
+		Timing:   c.Timing,
+		Enabled:  c.Enabled,
 	}
 	result, err := deps.VScanner.CreateTask(ctx, c.ProjectID, req)
 	if err != nil {
@@ -261,11 +246,14 @@ func (c *VScanTaskCreateCmd) Run(ctx context.Context, globals *CLI, deps *Deps) 
 }
 
 type VScanTaskUpdateCmd struct {
-	ProjectID   string   `arg:"" help:"Project ID"`
-	TaskID      string   `arg:"" help:"Task ID"`
-	Name        string   `help:"Task name" required:""`
-	Description string   `help:"Task description" default:""`
-	Targets     []string `help:"Scan targets (IPs, hostnames, CIDR ranges)"`
+	ProjectID string   `arg:"" help:"Project ID"`
+	TaskID    string   `arg:"" help:"Task ID"`
+	Name      string   `help:"Task name" required:""`
+	Networks  []string `help:"Networks to scan (IP, hostname, or CIDR)" required:""`
+	Ports     []string `help:"Port or port range (e.g. 22 or 1-1000)" required:""`
+	Schedule  string   `help:"Crontab schedule"`
+	Timing    string   `help:"Scanner timing profile" default:"normal"`
+	Enabled   bool     `help:"Enable the scheduled task" default:"true"`
 }
 
 func (c *VScanTaskUpdateCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
@@ -276,9 +264,12 @@ func (c *VScanTaskUpdateCmd) Run(ctx context.Context, globals *CLI, deps *Deps) 
 		return err
 	}
 	req := &vscanner.TaskRequest{
-		Name:        c.Name,
-		Description: c.Description,
-		Targets:     c.Targets,
+		Name:     c.Name,
+		Networks: c.Networks,
+		Ports:    c.Ports,
+		Schedule: c.Schedule,
+		Timing:   c.Timing,
+		Enabled:  c.Enabled,
 	}
 	result, err := deps.VScanner.UpdateTask(ctx, c.ProjectID, c.TaskID, req)
 	if err != nil {
@@ -304,7 +295,8 @@ func (c *VScanTaskStartCmd) Run(ctx context.Context, globals *CLI, deps *Deps) e
 	if err := requireVScanner(deps); err != nil {
 		return err
 	}
-	if err := deps.VScanner.StartTask(ctx, c.ProjectID, c.TaskID); err != nil {
+	result, err := deps.VScanner.StartTask(ctx, c.ProjectID, c.TaskID)
+	if err != nil {
 		return fmt.Errorf("starting task: %w", err)
 	}
 	w, closer, werr := outputWriter(globals)
@@ -312,34 +304,7 @@ func (c *VScanTaskStartCmd) Run(ctx context.Context, globals *CLI, deps *Deps) e
 		return werr
 	}
 	defer func() { _ = closer() }()
-	return writeIntelOutput(w, globals, "vscan task start", map[string]any{
-		"projectId": c.ProjectID, "taskId": c.TaskID, "started": true,
-	}, nil)
-}
-
-type VScanTaskStopCmd struct {
-	ProjectID string `arg:"" help:"Project ID"`
-	TaskID    string `arg:"" help:"Task ID"`
-}
-
-func (c *VScanTaskStopCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
-	if err := validateNonScanFormat(globals.Output); err != nil {
-		return err
-	}
-	if err := requireVScanner(deps); err != nil {
-		return err
-	}
-	if err := deps.VScanner.StopTask(ctx, c.ProjectID, c.TaskID); err != nil {
-		return fmt.Errorf("stopping task: %w", err)
-	}
-	w, closer, werr := outputWriter(globals)
-	if werr != nil {
-		return werr
-	}
-	defer func() { _ = closer() }()
-	return writeIntelOutput(w, globals, "vscan task stop", map[string]any{
-		"projectId": c.ProjectID, "taskId": c.TaskID, "stopped": true,
-	}, nil)
+	return writeIntelOutput(w, globals, "vscan task start", result, nil)
 }
 
 type VScanTaskDeleteCmd struct {
@@ -371,13 +336,7 @@ func (c *VScanTaskDeleteCmd) Run(ctx context.Context, globals *CLI, deps *Deps) 
 
 type VScanResultCmd struct {
 	List   VScanResultListCmd   `cmd:"" help:"List scan results for a project"`
-	Get    VScanResultGetCmd    `cmd:"" help:"Get a scan result"`
-	Stats  VScanResultStatsCmd  `cmd:"" help:"Get statistics for a scan result"`
-	Hosts  VScanResultHostsCmd  `cmd:"" help:"List hosts from a scan result"`
-	Host   VScanResultHostCmd   `cmd:"" help:"Get detailed host information"`
-	Vulns  VScanResultVulnsCmd  `cmd:"" help:"List vulnerabilities from a scan result"`
 	Delete VScanResultDeleteCmd `cmd:"" help:"Delete a scan result"`
-	Export VScanResultExportCmd `cmd:"" help:"Export a scan result"`
 }
 
 type VScanResultListCmd struct {
@@ -405,131 +364,6 @@ func (c *VScanResultListCmd) Run(ctx context.Context, globals *CLI, deps *Deps) 
 	return writeIntelOutput(w, globals, "vscan result list", result, nil)
 }
 
-type VScanResultGetCmd struct {
-	ProjectID string `arg:"" help:"Project ID"`
-	ResultID  string `arg:"" help:"Result ID"`
-}
-
-func (c *VScanResultGetCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
-	if err := validateNonScanFormat(globals.Output); err != nil {
-		return err
-	}
-	if err := requireVScanner(deps); err != nil {
-		return err
-	}
-	result, err := deps.VScanner.GetResult(ctx, c.ProjectID, c.ResultID)
-	if err != nil {
-		return fmt.Errorf("getting result: %w", err)
-	}
-	w, closer, werr := outputWriter(globals)
-	if werr != nil {
-		return werr
-	}
-	defer func() { _ = closer() }()
-	return writeIntelOutput(w, globals, "vscan result get", result, nil)
-}
-
-type VScanResultStatsCmd struct {
-	ProjectID string `arg:"" help:"Project ID"`
-	ResultID  string `arg:"" help:"Result ID"`
-}
-
-func (c *VScanResultStatsCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
-	if err := validateNonScanFormat(globals.Output); err != nil {
-		return err
-	}
-	if err := requireVScanner(deps); err != nil {
-		return err
-	}
-	result, err := deps.VScanner.GetResultStatistics(ctx, c.ProjectID, c.ResultID)
-	if err != nil {
-		return fmt.Errorf("getting statistics: %w", err)
-	}
-	w, closer, werr := outputWriter(globals)
-	if werr != nil {
-		return werr
-	}
-	defer func() { _ = closer() }()
-	return writeIntelOutput(w, globals, "vscan result stats", result, nil)
-}
-
-type VScanResultHostsCmd struct {
-	ProjectID string `arg:"" help:"Project ID"`
-	ResultID  string `arg:"" help:"Result ID"`
-	Limit     int    `help:"Maximum items to return" default:"100"`
-	Offset    int    `help:"Pagination offset" default:"0"`
-}
-
-func (c *VScanResultHostsCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
-	if err := validateNonScanFormat(globals.Output); err != nil {
-		return err
-	}
-	if err := requireVScanner(deps); err != nil {
-		return err
-	}
-	result, err := deps.VScanner.GetResultHosts(ctx, c.ProjectID, c.ResultID, c.Limit, c.Offset)
-	if err != nil {
-		return fmt.Errorf("getting hosts: %w", err)
-	}
-	w, closer, werr := outputWriter(globals)
-	if werr != nil {
-		return werr
-	}
-	defer func() { _ = closer() }()
-	return writeIntelOutput(w, globals, "vscan result hosts", result, nil)
-}
-
-type VScanResultHostCmd struct {
-	ProjectID string `arg:"" help:"Project ID"`
-	ResultID  string `arg:"" help:"Result ID"`
-	Host      string `arg:"" help:"Host identifier or IP"`
-}
-
-func (c *VScanResultHostCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
-	if err := validateNonScanFormat(globals.Output); err != nil {
-		return err
-	}
-	if err := requireVScanner(deps); err != nil {
-		return err
-	}
-	result, err := deps.VScanner.GetHostDetail(ctx, c.ProjectID, c.ResultID, c.Host)
-	if err != nil {
-		return fmt.Errorf("getting host detail: %w", err)
-	}
-	w, closer, werr := outputWriter(globals)
-	if werr != nil {
-		return werr
-	}
-	defer func() { _ = closer() }()
-	return writeIntelOutput(w, globals, "vscan result host", result, nil)
-}
-
-type VScanResultVulnsCmd struct {
-	ProjectID string `arg:"" help:"Project ID"`
-	ResultID  string `arg:"" help:"Result ID"`
-	Limit     int    `help:"Maximum items to return" default:"100"`
-	Offset    int    `help:"Pagination offset" default:"0"`
-}
-
-func (c *VScanResultVulnsCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
-	if err := validateNonScanFormat(globals.Output); err != nil {
-		return err
-	}
-	if err := requireVScanner(deps); err != nil {
-		return err
-	}
-	result, err := deps.VScanner.GetResultVulnerabilities(ctx, c.ProjectID, c.ResultID, c.Limit, c.Offset)
-	if err != nil {
-		return fmt.Errorf("getting vulnerabilities: %w", err)
-	}
-	w, closer, werr := outputWriter(globals)
-	if werr != nil {
-		return werr
-	}
-	defer func() { _ = closer() }()
-	return writeIntelOutput(w, globals, "vscan result vulns", result, nil)
-}
-
 type VScanResultDeleteCmd struct {
 	ProjectID string `arg:"" help:"Project ID"`
 	ResultID  string `arg:"" help:"Result ID"`
@@ -553,29 +387,6 @@ func (c *VScanResultDeleteCmd) Run(ctx context.Context, globals *CLI, deps *Deps
 	return writeIntelOutput(w, globals, "vscan result delete", map[string]any{
 		"projectId": c.ProjectID, "resultId": c.ResultID, "deleted": true,
 	}, nil)
-}
-
-type VScanResultExportCmd struct {
-	ProjectID string `arg:"" help:"Project ID"`
-	ResultID  string `arg:"" help:"Result ID"`
-	Format    string `help:"Export format" enum:"pdf,csv,json,xml" default:"json" name:"format"`
-}
-
-func (c *VScanResultExportCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
-	if err := requireVScanner(deps); err != nil {
-		return err
-	}
-	data, err := deps.VScanner.ExportResult(ctx, c.ProjectID, c.ResultID, c.Format)
-	if err != nil {
-		return fmt.Errorf("exporting result: %w", err)
-	}
-	w, closer, werr := outputWriter(globals)
-	if werr != nil {
-		return werr
-	}
-	defer func() { _ = closer() }()
-	_, err = w.Write(data)
-	return err
 }
 
 // --- License subcommand ---

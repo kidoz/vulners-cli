@@ -34,10 +34,13 @@ func TestVScanProjectListCmd_JSONEnvelope(t *testing.T) {
 func TestVScanProjectCreateCmd_JSONEnvelope(t *testing.T) {
 	client := &mockVScannerClient{
 		createProjectFn: func(_ context.Context, req *vscanner.ProjectRequest) (*vscanner.Project, error) {
+			assert.Equal(t, "lic-1", req.LicenseID)
+			require.NotNil(t, req.Notification)
+			assert.Equal(t, "disabled", req.Notification.Period)
 			return &vscanner.Project{ID: "proj-new", Name: req.Name}, nil
 		},
 	}
-	cmd := VScanProjectCreateCmd{Name: "my-project", Description: "test"}
+	cmd := VScanProjectCreateCmd{Name: "my-project", License: "lic-1", Notify: "disabled"}
 	out := captureStdout(t, func() {
 		err := cmd.Run(context.Background(), jsonCLI(), vscanDeps(client))
 		require.NoError(t, err)
@@ -50,14 +53,18 @@ func TestVScanProjectCreateCmd_JSONEnvelope(t *testing.T) {
 func TestVScanTaskCreateCmd_JSONEnvelope(t *testing.T) {
 	client := &mockVScannerClient{
 		createTaskFn: func(_ context.Context, projectID string, req *vscanner.TaskRequest) (*vscanner.Task, error) {
+			assert.Equal(t, []string{"192.168.1.0/24"}, req.Networks)
+			assert.Equal(t, []string{"1-1000"}, req.Ports)
 			return &vscanner.Task{ID: "task-1", ProjectID: projectID, Name: req.Name}, nil
 		},
 	}
 	cmd := VScanTaskCreateCmd{
 		ProjectID: "proj-1",
 		Name:      "scan-task",
-		Targets:   []string{"192.168.1.0/24"},
-		ScanType:  "fast",
+		Networks:  []string{"192.168.1.0/24"},
+		Ports:     []string{"1-1000"},
+		Timing:    "normal",
+		Enabled:   true,
 	}
 	out := captureStdout(t, func() {
 		err := cmd.Run(context.Background(), jsonCLI(), vscanDeps(client))
@@ -80,26 +87,28 @@ func TestVScanTaskStartCmd_JSONEnvelope(t *testing.T) {
 	assert.Equal(t, "vscan task start", envelope.Command)
 }
 
-func TestVScanResultStatsCmd_JSONEnvelope(t *testing.T) {
+func TestVScanProjectStatsCmd_JSONEnvelope(t *testing.T) {
 	client := &mockVScannerClient{
-		getStatisticsFn: func(_ context.Context, _, _ string) (*vscanner.Statistics, error) {
-			return &vscanner.Statistics{TotalHosts: 10, TotalVulns: 42}, nil
+		projectStatisticsFn: func(_ context.Context, projectID string, stats []string) (map[string]json.RawMessage, error) {
+			assert.Equal(t, "proj-1", projectID)
+			assert.Equal(t, []string{vscanner.StatTotalHosts}, stats)
+			return map[string]json.RawMessage{vscanner.StatTotalHosts: json.RawMessage(`10`)}, nil
 		},
 	}
-	cmd := VScanResultStatsCmd{ProjectID: "proj-1", ResultID: "res-1"}
+	cmd := VScanProjectStatsCmd{ProjectID: "proj-1", Stat: []string{vscanner.StatTotalHosts}}
 	out := captureStdout(t, func() {
 		err := cmd.Run(context.Background(), jsonCLI(), vscanDeps(client))
 		require.NoError(t, err)
 	})
 	var envelope IntelOutput
 	require.NoError(t, json.Unmarshal(out, &envelope))
-	assert.Equal(t, "vscan result stats", envelope.Command)
+	assert.Equal(t, "vscan project stats", envelope.Command)
 }
 
 func TestVScanLicenseCmd_JSONEnvelope(t *testing.T) {
 	client := &mockVScannerClient{
 		getLicensesFn: func(_ context.Context) ([]vscanner.License, error) {
-			return []vscanner.License{{ID: "lic-1", Type: "enterprise", Hosts: 100}}, nil
+			return []vscanner.License{{ID: "lic-1", Type: "enterprise"}}, nil
 		},
 	}
 	cmd := VScanLicenseCmd{}

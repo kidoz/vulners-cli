@@ -66,17 +66,12 @@ var commandSchemaTypes = map[string]reflect.Type{
 
 	// VScanner commands
 	"vscan-project-list":   reflect.TypeFor[typedIntelOutput[[]vscanner.Project]](),
-	"vscan-project-get":    reflect.TypeFor[typedIntelOutput[vscanner.Project]](),
 	"vscan-project-create": reflect.TypeFor[typedIntelOutput[vscanner.Project]](),
+	"vscan-project-stats":  reflect.TypeFor[typedIntelOutput[map[string]any]](),
 	"vscan-task-list":      reflect.TypeFor[typedIntelOutput[[]vscanner.Task]](),
-	"vscan-task-get":       reflect.TypeFor[typedIntelOutput[vscanner.Task]](),
 	"vscan-task-create":    reflect.TypeFor[typedIntelOutput[vscanner.Task]](),
+	"vscan-task-start":     reflect.TypeFor[typedIntelOutput[vscanner.Task]](),
 	"vscan-result-list":    reflect.TypeFor[typedIntelOutput[[]vscanner.Result]](),
-	"vscan-result-get":     reflect.TypeFor[typedIntelOutput[vscanner.Result]](),
-	"vscan-result-stats":   reflect.TypeFor[typedIntelOutput[vscanner.Statistics]](),
-	"vscan-result-hosts":   reflect.TypeFor[typedIntelOutput[[]vscanner.HostSummary]](),
-	"vscan-result-host":    reflect.TypeFor[typedIntelOutput[vscanner.HostDetail]](),
-	"vscan-result-vulns":   reflect.TypeFor[typedIntelOutput[[]vscanner.VulnSummary]](),
 	"vscan-license":        reflect.TypeFor[typedIntelOutput[[]vscanner.License]](),
 
 	// Model types (standalone)
