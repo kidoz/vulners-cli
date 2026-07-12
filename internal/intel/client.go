@@ -16,6 +16,7 @@ type Client interface {
 	GetMultipleBulletins(ctx context.Context, ids []string) (map[string]vulners.Bulletin, error)
 	GetBulletinReferences(ctx context.Context, id string) ([]string, error)
 	GetBulletinHistory(ctx context.Context, id string) ([]vulners.HistoryEntry, error)
+	CVEAudit(ctx context.Context, cve string) (*vulners.CVEAuditIssue, error)
 	SearchCPE(ctx context.Context, product, vendor string, limit int) (*vulners.CPESearchResult, error)
 	LinuxAudit(ctx context.Context, osName, osVersion string, packages []string) (*vulners.AuditResult, error)
 	KBAudit(ctx context.Context, os string, kbList []string) (*vulners.AuditResult, error)

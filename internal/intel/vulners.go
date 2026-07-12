@@ -80,6 +80,17 @@ func (v *VulnersClient) GetBulletin(ctx context.Context, id string) (*vulners.Bu
 	return b, nil
 }
 
+func (v *VulnersClient) CVEAudit(ctx context.Context, cve string) (*vulners.CVEAuditIssue, error) {
+	v.logger.Debug("CVE audit", "cve", cve)
+
+	result, err := v.client.Audit().CVEAudit(ctx, cve)
+	if err != nil {
+		return nil, fmt.Errorf("CVE audit %s: %w", cve, err)
+	}
+
+	return result, nil
+}
+
 func (v *VulnersClient) SearchCPE(ctx context.Context, product, vendor string, limit int) (*vulners.CPESearchResult, error) {
 	v.logger.Debug("searching CPE", "product", product, "vendor", vendor)
 

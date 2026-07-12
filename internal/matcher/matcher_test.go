@@ -76,6 +76,10 @@ func (m *mockClient) GetAIScore(ctx context.Context, text string) (*vulners.AISc
 }
 
 // Stub implementations for remaining interface methods.
+func (m *mockClient) CVEAudit(context.Context, string) (*vulners.CVEAuditIssue, error) {
+	return nil, nil
+}
+
 func (m *mockClient) SearchCPE(context.Context, string, string, int) (*vulners.CPESearchResult, error) {
 	return nil, nil
 }

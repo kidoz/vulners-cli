@@ -13,13 +13,15 @@ type CVECmd struct {
 	ID         string `arg:"" help:"CVE identifier (e.g. CVE-2021-44228)"`
 	References bool   `help:"Include external references"`
 	History    bool   `help:"Include change history"`
+	Affected   bool   `help:"Include affected packages and CPE configurations"`
 }
 
-// CVEOutput wraps bulletin data with optional references and history.
+// CVEOutput wraps bulletin data with optional references, history and affected components.
 type CVEOutput struct {
 	Bulletin   *vulners.Bulletin      `json:"bulletin"`
 	References []string               `json:"references,omitempty"`
 	History    []vulners.HistoryEntry `json:"history,omitempty"`
+	Affected   *vulners.CVEAuditIssue `json:"affected,omitempty"`
 }
 
 func (c *CVECmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cache.Store) error {
@@ -50,17 +52,28 @@ func (c *CVECmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cache.
 		return fmt.Errorf("CVE lookup failed: %w", err)
 	}
 
-	// If neither extra flag is set, output just the bulletin.
-	if !c.References && !c.History {
+	// If no extra flag is set, output just the bulletin.
+	if !c.References && !c.History && !c.Affected {
 		return writeIntelOutput(w, globals, "cve", bulletin, nil)
 	}
 
+	output, err := c.enrich(ctx, deps, bulletin)
+	if err != nil {
+		return err
+	}
+
+	return writeIntelOutput(w, globals, "cve", output, nil)
+}
+
+// enrich fetches the optional references, history and affected components
+// requested via flags and assembles the combined CVE output.
+func (c *CVECmd) enrich(ctx context.Context, deps *Deps, bulletin *vulners.Bulletin) (CVEOutput, error) {
 	output := CVEOutput{Bulletin: bulletin}
 
 	if c.References {
 		refs, err := deps.Intel.GetBulletinReferences(ctx, c.ID)
 		if err != nil {
-			return fmt.Errorf("fetching references: %w", err)
+			return output, fmt.Errorf("fetching references: %w", err)
 		}
 		output.References = refs
 	}
@@ -68,10 +81,18 @@ func (c *CVECmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cache.
 	if c.History {
 		history, err := deps.Intel.GetBulletinHistory(ctx, c.ID)
 		if err != nil {
-			return fmt.Errorf("fetching history: %w", err)
+			return output, fmt.Errorf("fetching history: %w", err)
 		}
 		output.History = history
 	}
 
-	return writeIntelOutput(w, globals, "cve", output, nil)
+	if c.Affected {
+		affected, err := deps.Intel.CVEAudit(ctx, c.ID)
+		if err != nil {
+			return output, fmt.Errorf("fetching affected components: %w", err)
+		}
+		output.Affected = affected
+	}
+
+	return output, nil
 }

@@ -62,6 +62,48 @@ func TestCVECmd_History(t *testing.T) {
 	assert.Contains(t, string(out), "initial publish")
 }
 
+func TestCVECmd_Affected(t *testing.T) {
+	client := &mockIntelClient{
+		getBulletinFn: func(context.Context, string) (*vulners.Bulletin, error) {
+			return &vulners.Bulletin{ID: "CVE-2021-44228"}, nil
+		},
+		cveAuditFn: func(_ context.Context, cve string) (*vulners.CVEAuditIssue, error) {
+			assert.Equal(t, "CVE-2021-44228", cve)
+			return &vulners.CVEAuditIssue{
+				CVE: cve,
+				AffectedPackages: []vulners.CVEAuditAffectedPackage{
+					{ID: "log4j", Name: "log4j-core", Range: "<2.15.0", Registry: "maven"},
+				},
+			}, nil
+		},
+	}
+
+	cmd := CVECmd{ID: "CVE-2021-44228", Affected: true}
+	out := captureStdout(t, func() {
+		err := cmd.Run(context.Background(), jsonCLI(), testDeps(client), nopStore())
+		require.NoError(t, err)
+	})
+	output := string(out)
+	assert.Contains(t, output, "affected")
+	assert.Contains(t, output, "log4j-core")
+}
+
+func TestCVECmd_AffectedAPIError(t *testing.T) {
+	client := &mockIntelClient{
+		getBulletinFn: func(context.Context, string) (*vulners.Bulletin, error) {
+			return &vulners.Bulletin{ID: "CVE-2021-44228"}, nil
+		},
+		cveAuditFn: func(context.Context, string) (*vulners.CVEAuditIssue, error) {
+			return nil, fmt.Errorf("boom")
+		},
+	}
+
+	cmd := CVECmd{ID: "CVE-2021-44228", Affected: true}
+	err := cmd.Run(context.Background(), jsonCLI(), testDeps(client), nopStore())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "fetching affected components")
+}
+
 func TestCVECmd_BothFlags(t *testing.T) {
 	client := &mockIntelClient{
 		getBulletinFn: func(context.Context, string) (*vulners.Bulletin, error) {

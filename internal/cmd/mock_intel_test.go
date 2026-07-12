@@ -17,6 +17,7 @@ type mockIntelClient struct {
 	getMultipleBulletinsFn  func(ctx context.Context, ids []string) (map[string]vulners.Bulletin, error)
 	getBulletinRefsFn       func(ctx context.Context, id string) ([]string, error)
 	getBulletinHistoryFn    func(ctx context.Context, id string) ([]vulners.HistoryEntry, error)
+	cveAuditFn              func(ctx context.Context, cve string) (*vulners.CVEAuditIssue, error)
 	searchCPEFn             func(ctx context.Context, product, vendor string, limit int) (*vulners.CPESearchResult, error)
 	linuxAuditFn            func(ctx context.Context, osName, osVersion string, packages []string) (*vulners.AuditResult, error)
 	kbAuditFn               func(ctx context.Context, os string, kbList []string) (*vulners.AuditResult, error)
@@ -89,6 +90,13 @@ func (m *mockIntelClient) GetBulletinHistory(ctx context.Context, id string) ([]
 		return m.getBulletinHistoryFn(ctx, id)
 	}
 	return nil, nil
+}
+
+func (m *mockIntelClient) CVEAudit(ctx context.Context, cve string) (*vulners.CVEAuditIssue, error) {
+	if m.cveAuditFn != nil {
+		return m.cveAuditFn(ctx, cve)
+	}
+	return &vulners.CVEAuditIssue{}, nil
 }
 
 func (m *mockIntelClient) SearchCPE(ctx context.Context, product, vendor string, limit int) (*vulners.CPESearchResult, error) {
