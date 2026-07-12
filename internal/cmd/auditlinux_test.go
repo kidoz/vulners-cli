@@ -46,6 +46,31 @@ func TestLinuxAuditCmd_Happy(t *testing.T) {
 	})
 }
 
+func TestLinuxAuditCmd_Modern(t *testing.T) {
+	arch := expectedArch()
+	called := false
+	client := &mockIntelClient{
+		linuxAuditV4Fn: func(_ context.Context, osName, osVersion string, packages []string) (*vulners.PackageAuditResult, error) {
+			called = true
+			assert.Equal(t, "ubuntu", osName)
+			assert.Equal(t, []string{"openssl 3.0.2 " + arch}, packages)
+			return &vulners.PackageAuditResult{TotalPackages: 1}, nil
+		},
+		linuxAuditFn: func(context.Context, string, string, []string) (*vulners.AuditResult, error) {
+			t.Fatal("legacy LinuxAudit should not be called with --modern")
+			return nil, nil
+		},
+	}
+
+	cmd := LinuxAuditCmd{Distro: "ubuntu", Version: "22.04", Pkg: []string{"openssl=3.0.2"}, Modern: true}
+	out := captureStdout(t, func() {
+		err := cmd.Run(context.Background(), jsonCLI(), testDeps(client))
+		require.NoError(t, err)
+	})
+	assert.True(t, called, "LinuxAuditV4 should be called with --modern")
+	assert.Contains(t, string(out), "audit linux")
+}
+
 func TestLinuxAuditCmd_MultiplePackages(t *testing.T) {
 	arch := expectedArch()
 	client := &mockIntelClient{

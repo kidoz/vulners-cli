@@ -49,6 +49,7 @@ type LinuxAuditCmd struct {
 	Version string   `help:"Distribution version (e.g. 22.04)" required:""`
 	Pkg     []string `help:"Package as name=version or 'name version arch'. Deb-based distros require arch (auto-detected if omitted)." required:""`
 	Arch    string   `help:"Default architecture to append when not specified in --pkg (e.g. amd64)" default:""`
+	Modern  bool     `help:"Use the modern v4 audit endpoint (per-package fixed versions and advisory metadata)"`
 }
 
 func getDistroType(distro string) distroType {
@@ -125,16 +126,24 @@ func (c *LinuxAuditCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error
 		return fmt.Errorf("no packages provided for audit")
 	}
 
-	result, err := deps.Intel.LinuxAudit(ctx, c.Distro, c.Version, packages)
-	if err != nil {
-		return fmt.Errorf("linux audit failed: %w", err)
-	}
-
 	w, closer, werr := outputWriter(globals)
 	if werr != nil {
 		return werr
 	}
 	defer func() { _ = closer() }()
+
+	if c.Modern {
+		result, err := deps.Intel.LinuxAuditV4(ctx, c.Distro, c.Version, packages)
+		if err != nil {
+			return fmt.Errorf("linux audit failed: %w", err)
+		}
+		return writeIntelOutput(w, globals, "audit linux", result, nil)
+	}
+
+	result, err := deps.Intel.LinuxAudit(ctx, c.Distro, c.Version, packages)
+	if err != nil {
+		return fmt.Errorf("linux audit failed: %w", err)
+	}
 
 	return writeIntelOutput(w, globals, "audit linux", result, nil)
 }

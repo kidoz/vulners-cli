@@ -38,10 +38,12 @@ var commandSchemaTypes = map[string]reflect.Type{
 	"autocomplete": reflect.TypeFor[typedIntelOutput[[]string]](),
 
 	// Audit commands
-	"audit-linux":   reflect.TypeFor[typedIntelOutput[vulners.AuditResult]](),
-	"audit-windows": reflect.TypeFor[typedIntelOutput[vulners.AuditResult]](),
-	"audit-host":    reflect.TypeFor[typedIntelOutput[vulners.AuditResult]](),
-	"audit-win":     reflect.TypeFor[typedIntelOutput[vulners.AuditResult]](),
+	"audit-linux":        reflect.TypeFor[typedIntelOutput[vulners.AuditResult]](),
+	"audit-linux-modern": reflect.TypeFor[typedIntelOutput[vulners.PackageAuditResult]](),
+	"audit-library":      reflect.TypeFor[typedIntelOutput[vulners.PackageAuditResult]](),
+	"audit-windows":      reflect.TypeFor[typedIntelOutput[vulners.AuditResult]](),
+	"audit-host":         reflect.TypeFor[typedIntelOutput[vulners.AuditResult]](),
+	"audit-win":          reflect.TypeFor[typedIntelOutput[vulners.AuditResult]](),
 
 	// Report commands
 	"report-summary": reflect.TypeFor[typedIntelOutput[vulners.VulnsSummary]](),
