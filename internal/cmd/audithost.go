@@ -29,7 +29,7 @@ func (c *HostAuditCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error 
 	var items []vulners.AuditItem
 	for _, pkg := range c.Packages {
 		parts := strings.SplitN(pkg, " ", 2)
-		item := vulners.AuditItem{Software: parts[0]}
+		item := vulners.AuditItem{Product: parts[0]}
 		if len(parts) > 1 {
 			item.Version = parts[1]
 		}
