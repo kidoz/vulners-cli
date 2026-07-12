@@ -104,6 +104,49 @@ func TestCVECmd_AffectedAPIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "fetching affected components")
 }
 
+func TestCVECmd_Related(t *testing.T) {
+	client := &mockIntelClient{
+		getBulletinFn: func(context.Context, string) (*vulners.Bulletin, error) {
+			return &vulners.Bulletin{ID: "CVE-2021-44228"}, nil
+		},
+		getBulletinWithRefsFn: func(_ context.Context, id string) (*vulners.BulletinsWithReferences, error) {
+			assert.Equal(t, "CVE-2021-44228", id)
+			return &vulners.BulletinsWithReferences{
+				References: map[string]map[string][]vulners.Bulletin{
+					"CVE-2021-44228": {
+						"exploit": {{ID: "EDB-50592"}},
+					},
+				},
+			}, nil
+		},
+	}
+
+	cmd := CVECmd{ID: "CVE-2021-44228", Related: true}
+	out := captureStdout(t, func() {
+		err := cmd.Run(context.Background(), jsonCLI(), testDeps(client), nopStore())
+		require.NoError(t, err)
+	})
+	output := string(out)
+	assert.Contains(t, output, "related")
+	assert.Contains(t, output, "EDB-50592")
+}
+
+func TestCVECmd_RelatedAPIError(t *testing.T) {
+	client := &mockIntelClient{
+		getBulletinFn: func(context.Context, string) (*vulners.Bulletin, error) {
+			return &vulners.Bulletin{ID: "CVE-2021-44228"}, nil
+		},
+		getBulletinWithRefsFn: func(context.Context, string) (*vulners.BulletinsWithReferences, error) {
+			return nil, fmt.Errorf("boom")
+		},
+	}
+
+	cmd := CVECmd{ID: "CVE-2021-44228", Related: true}
+	err := cmd.Run(context.Background(), jsonCLI(), testDeps(client), nopStore())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "fetching related bulletins")
+}
+
 func TestCVECmd_BothFlags(t *testing.T) {
 	client := &mockIntelClient{
 		getBulletinFn: func(context.Context, string) (*vulners.Bulletin, error) {

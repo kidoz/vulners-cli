@@ -14,14 +14,17 @@ type CVECmd struct {
 	References bool   `help:"Include external references"`
 	History    bool   `help:"Include change history"`
 	Affected   bool   `help:"Include affected packages and CPE configurations"`
+	Related    bool   `help:"Include related bulletins (exploits, patches) grouped by type"`
 }
 
-// CVEOutput wraps bulletin data with optional references, history and affected components.
+// CVEOutput wraps bulletin data with optional references, history, affected
+// components and related bulletins.
 type CVEOutput struct {
-	Bulletin   *vulners.Bulletin      `json:"bulletin"`
-	References []string               `json:"references,omitempty"`
-	History    []vulners.HistoryEntry `json:"history,omitempty"`
-	Affected   *vulners.CVEAuditIssue `json:"affected,omitempty"`
+	Bulletin   *vulners.Bulletin                        `json:"bulletin"`
+	References []string                                 `json:"references,omitempty"`
+	History    []vulners.HistoryEntry                   `json:"history,omitempty"`
+	Affected   *vulners.CVEAuditIssue                   `json:"affected,omitempty"`
+	Related    map[string]map[string][]vulners.Bulletin `json:"related,omitempty"`
 }
 
 func (c *CVECmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cache.Store) error {
@@ -53,7 +56,7 @@ func (c *CVECmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cache.
 	}
 
 	// If no extra flag is set, output just the bulletin.
-	if !c.References && !c.History && !c.Affected {
+	if !c.References && !c.History && !c.Affected && !c.Related {
 		return writeIntelOutput(w, globals, "cve", bulletin, nil)
 	}
 
@@ -92,6 +95,14 @@ func (c *CVECmd) enrich(ctx context.Context, deps *Deps, bulletin *vulners.Bulle
 			return output, fmt.Errorf("fetching affected components: %w", err)
 		}
 		output.Affected = affected
+	}
+
+	if c.Related {
+		related, err := deps.Intel.GetBulletinWithReferences(ctx, c.ID)
+		if err != nil {
+			return output, fmt.Errorf("fetching related bulletins: %w", err)
+		}
+		output.Related = related.References
 	}
 
 	return output, nil
