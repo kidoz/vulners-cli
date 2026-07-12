@@ -17,9 +17,13 @@ type mockIntelClient struct {
 	getMultipleBulletinsFn  func(ctx context.Context, ids []string) (map[string]vulners.Bulletin, error)
 	getBulletinRefsFn       func(ctx context.Context, id string) ([]string, error)
 	getBulletinHistoryFn    func(ctx context.Context, id string) ([]vulners.HistoryEntry, error)
+	getBulletinWithRefsFn   func(ctx context.Context, id string) (*vulners.BulletinsWithReferences, error)
+	getWebVulnsFn           func(ctx context.Context, paths []string, application any) (map[string][]vulners.WebVulnerability, error)
 	cveAuditFn              func(ctx context.Context, cve string) (*vulners.CVEAuditIssue, error)
 	searchCPEFn             func(ctx context.Context, product, vendor string, limit int) (*vulners.CPESearchResult, error)
 	linuxAuditFn            func(ctx context.Context, osName, osVersion string, packages []string) (*vulners.AuditResult, error)
+	linuxAuditV4Fn          func(ctx context.Context, osName, osVersion string, packages []string) (*vulners.PackageAuditResult, error)
+	libraryAuditFn          func(ctx context.Context, packages []string) (*vulners.PackageAuditResult, error)
 	kbAuditFn               func(ctx context.Context, os string, kbList []string) (*vulners.AuditResult, error)
 	hostAuditFn             func(ctx context.Context, osName, osVersion string, packages []vulners.AuditItem) (*vulners.SoftwareAuditResult, error)
 	winAuditFn              func(ctx context.Context, osName, osVersion string, kbList []string, software []vulners.WinAuditItem) (*vulners.AuditResult, error)
@@ -88,6 +92,34 @@ func (m *mockIntelClient) GetBulletinReferences(ctx context.Context, id string) 
 func (m *mockIntelClient) GetBulletinHistory(ctx context.Context, id string) ([]vulners.HistoryEntry, error) {
 	if m.getBulletinHistoryFn != nil {
 		return m.getBulletinHistoryFn(ctx, id)
+	}
+	return nil, nil
+}
+
+func (m *mockIntelClient) LinuxAuditV4(ctx context.Context, osName, osVersion string, packages []string) (*vulners.PackageAuditResult, error) {
+	if m.linuxAuditV4Fn != nil {
+		return m.linuxAuditV4Fn(ctx, osName, osVersion, packages)
+	}
+	return &vulners.PackageAuditResult{}, nil
+}
+
+func (m *mockIntelClient) LibraryAudit(ctx context.Context, packages []string) (*vulners.PackageAuditResult, error) {
+	if m.libraryAuditFn != nil {
+		return m.libraryAuditFn(ctx, packages)
+	}
+	return &vulners.PackageAuditResult{}, nil
+}
+
+func (m *mockIntelClient) GetBulletinWithReferences(ctx context.Context, id string) (*vulners.BulletinsWithReferences, error) {
+	if m.getBulletinWithRefsFn != nil {
+		return m.getBulletinWithRefsFn(ctx, id)
+	}
+	return &vulners.BulletinsWithReferences{}, nil
+}
+
+func (m *mockIntelClient) GetWebVulnerabilities(ctx context.Context, paths []string, application any) (map[string][]vulners.WebVulnerability, error) {
+	if m.getWebVulnsFn != nil {
+		return m.getWebVulnsFn(ctx, paths, application)
 	}
 	return nil, nil
 }

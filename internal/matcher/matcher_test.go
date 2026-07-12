@@ -80,6 +80,22 @@ func (m *mockClient) CVEAudit(context.Context, string) (*vulners.CVEAuditIssue, 
 	return nil, nil
 }
 
+func (m *mockClient) LinuxAuditV4(context.Context, string, string, []string) (*vulners.PackageAuditResult, error) {
+	return nil, nil
+}
+
+func (m *mockClient) LibraryAudit(context.Context, []string) (*vulners.PackageAuditResult, error) {
+	return nil, nil
+}
+
+func (m *mockClient) GetBulletinWithReferences(context.Context, string) (*vulners.BulletinsWithReferences, error) {
+	return nil, nil
+}
+
+func (m *mockClient) GetWebVulnerabilities(context.Context, []string, any) (map[string][]vulners.WebVulnerability, error) {
+	return nil, nil
+}
+
 func (m *mockClient) SearchCPE(context.Context, string, string, int) (*vulners.CPESearchResult, error) {
 	return nil, nil
 }

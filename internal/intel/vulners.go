@@ -117,6 +117,28 @@ func (v *VulnersClient) LinuxAudit(ctx context.Context, osName, osVersion string
 	return result, nil
 }
 
+func (v *VulnersClient) LinuxAuditV4(ctx context.Context, osName, osVersion string, packages []string) (*vulners.PackageAuditResult, error) {
+	v.logger.Debug("linux audit v4", "os", osName, "version", osVersion, "packages", len(packages))
+
+	result, err := v.client.Audit().LinuxAuditV4(ctx, osName, osVersion, packages)
+	if err != nil {
+		return nil, fmt.Errorf("linux audit v4: %w", err)
+	}
+
+	return result, nil
+}
+
+func (v *VulnersClient) LibraryAudit(ctx context.Context, packages []string) (*vulners.PackageAuditResult, error) {
+	v.logger.Debug("library audit", "packages", len(packages))
+
+	result, err := v.client.Audit().LibraryAudit(ctx, packages)
+	if err != nil {
+		return nil, fmt.Errorf("library audit: %w", err)
+	}
+
+	return result, nil
+}
+
 func (v *VulnersClient) KBAudit(ctx context.Context, os string, kbList []string) (*vulners.AuditResult, error) {
 	v.logger.Debug("windows KB audit", "os", os, "kbs", len(kbList))
 
@@ -201,6 +223,28 @@ func (v *VulnersClient) GetBulletinReferences(ctx context.Context, id string) ([
 	}
 
 	return refs, nil
+}
+
+func (v *VulnersClient) GetBulletinWithReferences(ctx context.Context, id string) (*vulners.BulletinsWithReferences, error) {
+	v.logger.Debug("getting bulletin with references", "id", id)
+
+	result, err := v.client.Search().GetBulletinWithReferences(ctx, id, vulners.WithFields(allFields...))
+	if err != nil {
+		return nil, fmt.Errorf("getting bulletin with references %s: %w", id, err)
+	}
+
+	return result, nil
+}
+
+func (v *VulnersClient) GetWebVulnerabilities(ctx context.Context, paths []string, application any) (map[string][]vulners.WebVulnerability, error) {
+	v.logger.Debug("getting web vulnerabilities", "paths", len(paths))
+
+	result, err := v.client.Search().GetWebVulnerabilities(ctx, paths, application)
+	if err != nil {
+		return nil, fmt.Errorf("getting web vulnerabilities: %w", err)
+	}
+
+	return result, nil
 }
 
 func (v *VulnersClient) GetBulletinHistory(ctx context.Context, id string) ([]vulners.HistoryEntry, error) {
