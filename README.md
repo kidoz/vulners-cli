@@ -79,6 +79,9 @@ vulners suggest type                       # field value suggestions
 # Audit Linux packages
 vulners audit linux --distro ubuntu --version 22.04 --pkg openssl=3.0.2 --pkg curl=7.81.0
 
+# Audit libraries by Package URL (PURL)
+vulners audit library pkg:npm/lodash@4.17.20 pkg:golang/golang.org/x/crypto@0.5.0
+
 # Audit Windows KB updates
 vulners audit windows --kb KB5034441 --kb KB5034439
 
@@ -209,11 +212,16 @@ vulners search "log4j" --offline
 ### Diagnostics
 
 ```bash
+# Print version, commit, build date, and Go version
+vulners version
+
 # Check environment health
 vulners doctor
 ```
 
-Verifies API key, network connectivity, offline cache, and Go installation. Use `--output json` for machine-readable results.
+`version` reports the binary's build metadata (version, commit, build date, Go version). Use `--output json` for machine-readable results.
+
+`doctor` verifies API key, network connectivity, offline cache, and Go installation. Use `--output json` for machine-readable results.
 
 ## Output formats
 
@@ -233,11 +241,14 @@ vulners scan repo . --output html
 # CycloneDX VEX
 vulners scan repo . --output cyclonedx
 
+# Markdown (human-readable, portable)
+vulners scan repo . --output markdown
+
 # Write to file instead of stdout
 vulners scan repo . --output sarif --output-file results.sarif
 ```
 
-> **Note:** `sarif`, `html`, and `cyclonedx` formats are only available for scan commands. Intel, audit, STIX, and offline commands support `json` and `table`.
+> **Note:** `sarif`, `html`, and `cyclonedx` formats are only available for scan commands. Intel, audit, STIX, and offline commands support `json`, `table`, and `markdown`.
 
 ## Agent & CI/CD mode
 
@@ -287,7 +298,7 @@ vulners scan repo . --vex vex.json
 
 | Flag | Description |
 |---|---|
-| `--output` | Output format: `json`, `table`, `sarif`, `html`, `cyclonedx` (default: `json`) |
+| `--output` | Output format: `json`, `table`, `sarif`, `html`, `cyclonedx`, `markdown` (default: `json`) |
 | `--output-file` | Write output to file instead of stdout |
 | `--quiet` / `-q` | Suppress non-error output |
 | `--verbose` / `-v` | Enable debug output |
