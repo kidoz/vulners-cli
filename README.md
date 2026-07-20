@@ -209,6 +209,14 @@ vulners cve CVE-2021-44228 --offline
 vulners search "log4j" --offline
 ```
 
+> **Note:** Large collections (`cve`, `ubuntu`, `debian`) are served as CDN-cached downloads that can exceed the default 50 MiB response limit. To sync them, raise the limit via `VULNERS_MAX_RESPONSE_SIZE` (bytes):
+>
+> ```bash
+> # 512 MiB is enough for the full cve collection (~370k bulletins)
+> export VULNERS_MAX_RESPONSE_SIZE=536870912
+> vulners offline sync --collections cve
+> ```
+
 ### Diagnostics
 
 ```bash
@@ -322,11 +330,22 @@ api_key: your-api-key-here
 verbose: false
 quiet: false
 offline: false
+# max_response_size: 536870912  # bytes; raise to sync large offline collections
 ```
 
 Configuration precedence (highest wins): CLI flags > environment variables > config file > defaults.
 
-Environment variables use the `VULNERS_` prefix (e.g. `VULNERS_API_KEY`, `VULNERS_VERBOSE`).
+Environment variables use the `VULNERS_` prefix (e.g. `VULNERS_API_KEY`, `VULNERS_VERBOSE`). Recognized env vars:
+
+| Variable | Type | Notes |
+|---|---|---|
+| `VULNERS_API_KEY` | string | Required for most commands |
+| `VULNERS_DB_PATH` | string | Offline cache database path |
+| `VULNERS_VERBOSE` / `VULNERS_QUIET` | bool (`true`/`false`/`1`/`0`) | Log verbosity |
+| `VULNERS_OFFLINE` | bool | Force offline mode |
+| `VULNERS_ENABLE_AI_SCORE` | bool | Fetch AI enrichment scores |
+| `VULNERS_MAX_RESPONSE_SIZE` | int (bytes) | Raise the HTTP response-body limit (default 50 MiB). Needed to sync large offline collections (`cve`, `ubuntu`, `debian`). Non-positive / unset keeps the default. |
+| `VULNERS_CONFIG` | string | Override the config file path |
 
 ## Development
 
