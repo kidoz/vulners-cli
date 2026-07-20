@@ -67,6 +67,9 @@ func NewSSHExecutor(opts SSHOptions) (*SSHExecutor, error) {
 		//nolint:gosec // This is connecting to the local SSH agent socket.
 		conn, err := net.Dial("unix", socket)
 		if err == nil {
+			// The agent client does not take ownership of the socket; close it
+			// regardless of whether signers are usable.
+			defer func() { _ = conn.Close() }()
 			agentClient := agent.NewClient(conn)
 			signers, err := agentClient.Signers()
 			if err == nil && len(signers) > 0 {
