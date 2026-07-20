@@ -24,6 +24,37 @@ func TestPolicy_Filter(t *testing.T) {
 	assert.Equal(t, "CVE-2023-0004", filtered[1].VulnID)
 }
 
+func TestPolicy_Filter_CaseInsensitive(t *testing.T) {
+	// Users frequently type lowercase CVE IDs on the CLI; matching must be
+	// case-insensitive on both the primary VulnID and aliases.
+	p := New("", []string{"cve-2021-44228", "cve-2023-0001"})
+
+	findings := []model.Finding{
+		{VulnID: "CVE-2021-44228", Severity: "critical"},                               // uppercase finding, lowercase ignore
+		{VulnID: "cve-2023-0003", Severity: "low", Aliases: []string{"CVE-2023-0001"}}, // uppercase alias, lowercase ignore
+		{VulnID: "CVE-2023-0002", Severity: "high"},                                    // not ignored
+	}
+
+	filtered := p.Filter(findings)
+	assert.Len(t, filtered, 1)
+	assert.Equal(t, "CVE-2023-0002", filtered[0].VulnID)
+}
+
+func TestPolicy_Filter_VEXCaseInsensitive(t *testing.T) {
+	// VEX statement IDs should also match case-insensitively.
+	p := New("", nil)
+	p.VEXStatuses = map[string]string{"CVE-2021-44228": "not_affected"}
+
+	findings := []model.Finding{
+		{VulnID: "cve-2021-44228", Severity: "critical"}, // lowercase finding, uppercase VEX key
+		{VulnID: "CVE-2023-0002", Severity: "high"},
+	}
+
+	filtered := p.Filter(findings)
+	assert.Len(t, filtered, 1)
+	assert.Equal(t, "CVE-2023-0002", filtered[0].VulnID)
+}
+
 func TestPolicy_ExitCode(t *testing.T) {
 	tests := []struct {
 		name     string

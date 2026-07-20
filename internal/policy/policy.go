@@ -1,6 +1,8 @@
 package policy
 
 import (
+	"strings"
+
 	"github.com/kidoz/vulners-cli/internal/model"
 )
 
@@ -11,11 +13,19 @@ type Policy struct {
 	VEXStatuses map[string]string
 }
 
+// normID normalizes a vulnerability identifier for case-insensitive matching.
+// Vulnerability IDs (CVE-..., RHSA-..., GHSA-...) are conventionally uppercase,
+// but users frequently type them lowercase; normalize both sides to uppercase
+// so --ignore cve-2021-44228 matches a finding carrying CVE-2021-44228.
+func normID(id string) string {
+	return strings.ToUpper(id)
+}
+
 // New creates a Policy from CLI flags.
 func New(failOn string, ignoreIDs []string) *Policy {
 	ignore := make(map[string]bool, len(ignoreIDs))
 	for _, id := range ignoreIDs {
-		ignore[id] = true
+		ignore[normID(id)] = true
 	}
 	return &Policy{
 		FailOn:    model.ParseSeverity(failOn),
@@ -27,13 +37,13 @@ func New(failOn string, ignoreIDs []string) *Policy {
 func (p *Policy) Filter(findings []model.Finding) []model.Finding {
 	var filtered []model.Finding
 	for _, f := range findings {
-		if p.IgnoreIDs[f.VulnID] {
+		if p.IgnoreIDs[normID(f.VulnID)] {
 			continue
 		}
 		// Also check aliases.
 		ignored := false
 		for _, alias := range f.Aliases {
-			if p.IgnoreIDs[alias] {
+			if p.IgnoreIDs[normID(alias)] {
 				ignored = true
 				break
 			}
@@ -56,13 +66,13 @@ func vexSuppressed(statuses map[string]string, f model.Finding) bool {
 	}
 
 	// Primary VulnID takes priority — if it has an explicit status, use it.
-	if status, ok := statuses[f.VulnID]; ok {
+	if status, ok := statuses[normID(f.VulnID)]; ok {
 		return status == "not_affected" || status == "fixed"
 	}
 
 	// Fall back to aliases only when the primary ID has no VEX statement.
 	for _, alias := range f.Aliases {
-		if status, ok := statuses[alias]; ok {
+		if status, ok := statuses[normID(alias)]; ok {
 			if status == "not_affected" || status == "fixed" {
 				return true
 			}

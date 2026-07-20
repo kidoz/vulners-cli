@@ -38,13 +38,14 @@ func LoadVEX(path string) (map[string]string, error) {
 	statuses := make(map[string]string, len(doc.Statements))
 	for _, s := range doc.Statements {
 		if s.Vulnerability.Name != "" {
-			if prev, exists := statuses[s.Vulnerability.Name]; exists {
+			id := normID(s.Vulnerability.Name)
+			if prev, exists := statuses[id]; exists {
 				slog.Warn("duplicate VEX statement, overwriting",
-					"vulnerability", s.Vulnerability.Name,
+					"vulnerability", id,
 					"previous_status", prev,
 					"new_status", s.Status)
 			}
-			statuses[s.Vulnerability.Name] = s.Status
+			statuses[id] = s.Status
 		}
 	}
 
