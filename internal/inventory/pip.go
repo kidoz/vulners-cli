@@ -68,14 +68,18 @@ func parsePipRequirement(line string) (name, version string) {
 		}
 	}
 
-	// Split on version specifiers: ==, >=, <=, ~=, !=, >, <
-	for _, sep := range []string{"==", ">=", "<=", "~=", "!=", ">", "<"} {
+	// Version specifiers. Only == and ~= denote a known installed version;
+	// the others (>=, <=, !=, >, <) are constraints on an unknown installed
+	// version, so we report the name without a version rather than guessing.
+	for _, sep := range []string{"==", "~=", ">=", "<=", "!=", ">", "<"} {
 		if idx := strings.Index(line, sep); idx > 0 {
 			name = strings.TrimSpace(line[:idx])
-			version = strings.TrimSpace(line[idx+len(sep):])
-			// Take only first version for ranges (e.g. ">=1.0,<2.0" → "1.0")
-			if commaIdx := strings.Index(version, ","); commaIdx > 0 {
-				version = version[:commaIdx]
+			if sep == "==" || sep == "~=" {
+				version = strings.TrimSpace(line[idx+len(sep):])
+				// Take only first version for ranges (e.g. "==1.0,<2.0" → "1.0")
+				if commaIdx := strings.Index(version, ","); commaIdx > 0 {
+					version = version[:commaIdx]
+				}
 			}
 			return name, version
 		}

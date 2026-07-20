@@ -10,7 +10,7 @@ import (
 func TestMultiCollector_Collect_PipOnly(t *testing.T) {
 	dir := t.TempDir()
 
-	pipContent := "requests==2.31.0\nflask>=2.0.0\n"
+	pipContent := "requests==2.31.0\nflask==2.3.0\n"
 	if err := os.WriteFile(filepath.Join(dir, "requirements.txt"), []byte(pipContent), 0o600); err != nil {
 		t.Fatal(err)
 	}

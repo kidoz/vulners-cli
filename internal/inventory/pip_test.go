@@ -23,9 +23,9 @@ func TestPipCollector_Collect(t *testing.T) {
 	}
 
 	assert.Equal(t, "2.31.0", names["requests"])
-	assert.Equal(t, "2.3.0", names["flask"])
+	assert.Equal(t, "", names["flask"]) // >= is a constraint, not a known version
 	assert.Equal(t, "1.24.3", names["numpy"])
-	assert.Equal(t, "4.2", names["django"])
+	assert.Equal(t, "", names["django"]) // >= is a constraint, not a known version
 }
 
 func TestPipCollector_VersionlessPURL(t *testing.T) {
@@ -46,10 +46,21 @@ func TestParsePipRequirement(t *testing.T) {
 		name    string
 		version string
 	}{
+		// Exact and compatible-release specifiers denote a known version.
 		{"requests==2.31.0", "requests", "2.31.0"},
-		{"flask>=2.3.0", "flask", "2.3.0"},
-		{"django[argon2]>=4.2,<5.0", "django", "4.2"},
 		{"numpy==1.24.3 ; python_version >= '3.8'", "numpy", "1.24.3"},
+		{"wheel~=0.40", "wheel", "0.40"},
+		{"pkg~=0.40,<0.41", "pkg", "0.40"},
+
+		// Constraints (>=, <=, !=, >, <) describe an unknown installed version;
+		// reporting a version would risk both false negatives and false positives.
+		{"flask>=2.3.0", "flask", ""},
+		{"django[argon2]>=4.2,<5.0", "django", ""},
+		{"lib!=1.5", "lib", ""},
+		{"pkg>1.0", "pkg", ""},
+		{"pkg<2.0", "pkg", ""},
+
+		// No specifier — name only.
 		{"simple-package", "simple-package", ""},
 	}
 	for _, tt := range tests {
