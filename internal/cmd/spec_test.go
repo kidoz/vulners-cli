@@ -87,6 +87,51 @@ func TestSpecCmd_HasAllTopLevelCommands(t *testing.T) {
 	}
 }
 
+func TestSpecCmd_HasSmartAuditCommand(t *testing.T) {
+	k := testKong(t)
+
+	cmd := SpecCmd{}
+	out := captureStdout(t, func() {
+		err := cmd.Run(jsonCLI(), k)
+		require.NoError(t, err)
+	})
+
+	var envelope IntelOutput
+	require.NoError(t, json.Unmarshal(out, &envelope))
+
+	data, err := json.Marshal(envelope.Data)
+	require.NoError(t, err)
+
+	var spec SpecOutput
+	require.NoError(t, json.Unmarshal(data, &spec))
+
+	var auditCommand *SpecCommand
+	for i := range spec.Commands {
+		if spec.Commands[i].Name == "audit" {
+			auditCommand = &spec.Commands[i]
+			break
+		}
+	}
+	require.NotNil(t, auditCommand)
+
+	var smartCommand *SpecCommand
+	for i := range auditCommand.Commands {
+		if auditCommand.Commands[i].Name == "smart" {
+			smartCommand = &auditCommand.Commands[i]
+			break
+		}
+	}
+	require.NotNil(t, smartCommand)
+
+	flags := make(map[string]SpecFlag)
+	for _, flag := range smartCommand.Flags {
+		flags[flag.Name] = flag
+	}
+	assert.True(t, flags["software"].Required)
+	assert.Equal(t, "official,extended", flags["catalog"].Enum)
+	assert.Equal(t, "official", flags["catalog"].Default)
+}
+
 func TestSpecCmd_GlobalFlags(t *testing.T) {
 	k := testKong(t)
 

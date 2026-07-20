@@ -24,6 +24,7 @@ type mockIntelClient struct {
 	linuxAuditFn            func(ctx context.Context, osName, osVersion string, packages []string) (*vulners.AuditResult, error)
 	linuxAuditV4Fn          func(ctx context.Context, osName, osVersion string, packages []string) (*vulners.PackageAuditResult, error)
 	libraryAuditFn          func(ctx context.Context, packages []string) (*vulners.PackageAuditResult, error)
+	smartAuditFn            func(ctx context.Context, software []string, catalog string) (*vulners.SmartAuditResult, error)
 	kbAuditFn               func(ctx context.Context, os string, kbList []string) (*vulners.AuditResult, error)
 	hostAuditFn             func(ctx context.Context, osName, osVersion string, packages []vulners.AuditItem) (*vulners.SoftwareAuditResult, error)
 	winAuditFn              func(ctx context.Context, osName, osVersion string, kbList []string, software []vulners.WinAuditItem) (*vulners.AuditResult, error)
@@ -108,6 +109,13 @@ func (m *mockIntelClient) LibraryAudit(ctx context.Context, packages []string) (
 		return m.libraryAuditFn(ctx, packages)
 	}
 	return &vulners.PackageAuditResult{}, nil
+}
+
+func (m *mockIntelClient) SmartAudit(ctx context.Context, software []string, catalog string) (*vulners.SmartAuditResult, error) {
+	if m.smartAuditFn != nil {
+		return m.smartAuditFn(ctx, software, catalog)
+	}
+	return &vulners.SmartAuditResult{}, nil
 }
 
 func (m *mockIntelClient) GetBulletinWithReferences(ctx context.Context, id string) (*vulners.BulletinsWithReferences, error) {

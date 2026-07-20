@@ -139,6 +139,17 @@ func (v *VulnersClient) LibraryAudit(ctx context.Context, packages []string) (*v
 	return result, nil
 }
 
+func (v *VulnersClient) SmartAudit(ctx context.Context, software []string, catalog string) (*vulners.SmartAuditResult, error) {
+	v.logger.Debug("smart audit", "software", len(software), "catalog", catalog)
+
+	result, err := v.client.Audit().SmartAudit(ctx, software, vulners.WithAuditCatalog(catalog))
+	if err != nil {
+		return nil, fmt.Errorf("smart audit: %w", err)
+	}
+
+	return result, nil
+}
+
 func (v *VulnersClient) KBAudit(ctx context.Context, os string, kbList []string) (*vulners.AuditResult, error) {
 	v.logger.Debug("windows KB audit", "os", os, "kbs", len(kbList))
 

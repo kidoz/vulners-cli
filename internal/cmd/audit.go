@@ -4,6 +4,7 @@ package cmd
 type AuditCmd struct {
 	Linux    LinuxAuditCmd   `cmd:"" help:"Audit Linux packages"`
 	Library  LibraryAuditCmd `cmd:"" help:"Audit libraries by Package URL (PURL)"`
+	Smart    SmartAuditCmd   `cmd:"" help:"Resolve and audit free-form software descriptions"`
 	Windows  WindowsAuditCmd `cmd:"" help:"Audit Windows KB updates"`
 	Host     HostAuditCmd    `cmd:"" help:"Audit host packages (v4 API)"`
 	Winaudit WinFullAuditCmd `cmd:"" name:"winaudit" help:"Full Windows audit (KBs + software)"`

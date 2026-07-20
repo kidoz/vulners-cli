@@ -70,6 +70,7 @@ func TestListSchemaCommands(t *testing.T) {
 	assert.True(t, found["scan"])
 	assert.True(t, found["doctor"])
 	assert.True(t, found["search"])
+	assert.True(t, found["audit-smart"])
 	assert.True(t, found["vscan-project-list"])
 }
 

@@ -21,6 +21,7 @@ type Client interface {
 	LinuxAudit(ctx context.Context, osName, osVersion string, packages []string) (*vulners.AuditResult, error)
 	LinuxAuditV4(ctx context.Context, osName, osVersion string, packages []string) (*vulners.PackageAuditResult, error)
 	LibraryAudit(ctx context.Context, packages []string) (*vulners.PackageAuditResult, error)
+	SmartAudit(ctx context.Context, software []string, catalog string) (*vulners.SmartAuditResult, error)
 	GetBulletinWithReferences(ctx context.Context, id string) (*vulners.BulletinsWithReferences, error)
 	GetWebVulnerabilities(ctx context.Context, paths []string, application any) (map[string][]vulners.WebVulnerability, error)
 	KBAudit(ctx context.Context, os string, kbList []string) (*vulners.AuditResult, error)

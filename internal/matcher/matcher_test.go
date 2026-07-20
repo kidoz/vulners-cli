@@ -88,6 +88,10 @@ func (m *mockClient) LibraryAudit(context.Context, []string) (*vulners.PackageAu
 	return nil, nil
 }
 
+func (m *mockClient) SmartAudit(context.Context, []string, string) (*vulners.SmartAuditResult, error) {
+	return nil, nil
+}
+
 func (m *mockClient) GetBulletinWithReferences(context.Context, string) (*vulners.BulletinsWithReferences, error) {
 	return nil, nil
 }

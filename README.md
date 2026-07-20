@@ -85,6 +85,10 @@ vulners audit windows --kb KB5034441 --kb KB5034439
 # Host audit (v4 API -- packages in "name version" format)
 vulners audit host --os ubuntu --version 22.04 --packages "openssl 3.0.2" --packages "curl 7.81.0"
 
+# Resolve free-form software descriptions and audit the matched products
+vulners audit smart --software "Adobe Reader 5.3" --software "OpenSSL 1.0.1" --catalog official
+# The official catalog is used by default; pass --catalog extended to include the extended catalog
+
 # Full Windows audit (KBs + software)
 vulners audit winaudit --os "Windows 10" --version "19045" --kb KB5034441 --software "Firefox 121.0"
 ```
