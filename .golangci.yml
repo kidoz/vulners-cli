@@ -38,6 +38,7 @@ linters:
     gosec:
       excludes:
         - G304 # file inclusion via variable — expected for CLI tool
+        - G703 # file write via variable path — expected for CLI tool (output-file, cache, temp dirs)
 
   exclusions:
     paths:
