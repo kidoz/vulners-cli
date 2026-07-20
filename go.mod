@@ -4,8 +4,8 @@ go 1.26.5
 
 require (
 	github.com/CycloneDX/cyclonedx-go v0.11.0
-	github.com/alecthomas/kong v1.15.0
-	github.com/anchore/syft v1.46.0
+	github.com/alecthomas/kong v1.16.0
+	github.com/anchore/syft v1.48.0
 	github.com/invopop/jsonschema v0.14.0
 	github.com/kidoz/go-vulners v1.3.2
 	github.com/knadh/koanf/parsers/yaml v1.1.0
@@ -21,7 +21,7 @@ require (
 	golang.org/x/crypto v0.54.0
 	golang.org/x/term v0.45.0
 	golang.org/x/vuln v1.6.0
-	modernc.org/sqlite v1.53.0
+	modernc.org/sqlite v1.54.0
 )
 
 require (
@@ -193,7 +193,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kastenhq/goversion v0.0.0-20230811215019-93b2f8823953 // indirect
 	github.com/kevinburke/ssh_config v1.6.0 // indirect
-	github.com/klauspost/compress v1.18.6 // indirect
+	github.com/klauspost/compress v1.19.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect
@@ -320,7 +320,8 @@ require (
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	modernc.org/libc v1.73.4 // indirect
+	howett.net/plist v1.0.1 // indirect
+	modernc.org/libc v1.74.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
