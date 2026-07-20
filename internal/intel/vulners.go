@@ -32,16 +32,43 @@ var allFields = []string{
 	"lastseen", "objectVersion",
 }
 
+// ClientOption configures a VulnersClient at construction.
+type ClientOption func(*clientOptions)
+
+type clientOptions struct {
+	maxResponseSize int64
+}
+
+// WithMaxResponseSize raises the maximum HTTP response body size the client
+// will accept. Needed for fetching large archive collections (e.g. "cve",
+// "ubuntu", "debian") whose CDN-cached downloads exceed the go-vulners default
+// of 50 MiB. A non-positive value keeps the default.
+func WithMaxResponseSize(maxBytes int64) ClientOption {
+	return func(o *clientOptions) {
+		o.maxResponseSize = maxBytes
+	}
+}
+
 // NewVulnersClient creates a new Vulners API client.
-func NewVulnersClient(apiKey string, logger *slog.Logger) (*VulnersClient, error) {
+func NewVulnersClient(apiKey string, logger *slog.Logger, opts ...ClientOption) (*VulnersClient, error) {
 	if apiKey == "" {
 		return nil, fmt.Errorf("VULNERS_API_KEY is required")
 	}
 
-	c, err := vulners.NewClient(apiKey,
+	o := &clientOptions{}
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	vopts := []vulners.Option{
 		vulners.WithTimeout(defaultTimeout),
-		vulners.WithUserAgent("vulners-cli/"+Version),
-	)
+		vulners.WithUserAgent("vulners-cli/" + Version),
+	}
+	if o.maxResponseSize > 0 {
+		vopts = append(vopts, vulners.WithMaxResponseSize(o.maxResponseSize))
+	}
+
+	c, err := vulners.NewClient(apiKey, vopts...)
 	if err != nil {
 		return nil, fmt.Errorf("creating vulners client: %w", err)
 	}

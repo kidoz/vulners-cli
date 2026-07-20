@@ -122,3 +122,28 @@ func TestLoad_EnvOverridesYAML(t *testing.T) {
 	assert.Equal(t, "env-key", cfg.APIKey, "env should override YAML")
 	assert.Equal(t, "/yaml/path.db", cfg.DBPath, "YAML should override default")
 }
+
+func TestLoad_MaxResponseSizeEnv(t *testing.T) {
+	t.Setenv("VULNERS_CONFIG", filepath.Join(t.TempDir(), "nonexistent.yaml"))
+
+	t.Run("valid integer is parsed", func(t *testing.T) {
+		t.Setenv("VULNERS_MAX_RESPONSE_SIZE", "536870912") // 512 MiB
+		cfg, err := Load()
+		require.NoError(t, err)
+		assert.Equal(t, int64(536870912), cfg.MaxResponseSize)
+	})
+
+	t.Run("empty/unset keeps zero default", func(t *testing.T) {
+		t.Setenv("VULNERS_MAX_RESPONSE_SIZE", "")
+		cfg, err := Load()
+		require.NoError(t, err)
+		assert.Equal(t, int64(0), cfg.MaxResponseSize, "empty env should not override default")
+	})
+
+	t.Run("invalid value is rejected", func(t *testing.T) {
+		t.Setenv("VULNERS_MAX_RESPONSE_SIZE", "512MB")
+		_, err := Load()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must be an integer number of bytes")
+	})
+}

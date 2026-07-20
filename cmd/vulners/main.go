@@ -103,7 +103,15 @@ func provideDeps(cfg *config.Config, logger *slog.Logger) (*icmd.Deps, error) {
 	var vscannerClient intel.VScannerClient
 	if cfg.APIKey != "" {
 		var err error
-		intelClient, err = intel.NewVulnersClient(cfg.APIKey, logger)
+		var intelOpts []intel.ClientOption
+		// VULNERS_MAX_RESPONSE_SIZE raises the response-body limit for the whole
+		// client. Needed for offline sync of large collections (cve, ubuntu,
+		// debian) whose CDN-cached downloads exceed the go-vulners 50 MiB
+		// default. A non-positive value keeps the default.
+		if cfg.MaxResponseSize > 0 {
+			intelOpts = append(intelOpts, intel.WithMaxResponseSize(cfg.MaxResponseSize))
+		}
+		intelClient, err = intel.NewVulnersClient(cfg.APIKey, logger, intelOpts...)
 		if err != nil {
 			return nil, fmt.Errorf("creating Vulners client: %w (check VULNERS_API_KEY)", err)
 		}
