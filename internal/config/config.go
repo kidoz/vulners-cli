@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/confmap"
@@ -44,6 +45,19 @@ func Load() (*Config, error) {
 		}
 	}
 
+	// Validate boolean env vars explicitly so invalid values fail loudly
+	// instead of being silently coerced by Koanf's string→bool conversion
+	// (which can surprise users — e.g. "false" not reliably producing false).
+	// strconv.ParseBool accepts: 1, t, T, TRUE, true, True, 0, f, F, FALSE,
+	// false, False. Anything else (yes, no, off, on, 2...) is rejected.
+	for _, key := range []string{"VULNERS_VERBOSE", "VULNERS_QUIET", "VULNERS_OFFLINE", "VULNERS_ENABLE_AI_SCORE"} {
+		if v, ok := os.LookupEnv(key); ok && v != "" {
+			if _, err := strconv.ParseBool(v); err != nil {
+				return nil, fmt.Errorf("env %s=%q must be a boolean (true/false, 1/0)", key, v)
+			}
+		}
+	}
+
 	if err := k.Load(env.ProviderWithValue("VULNERS_", ".", func(key, value string) (string, interface{}) {
 		if value == "" {
 			return "", nil // skip empty env vars so they don't override file/defaults
@@ -53,14 +67,10 @@ func Load() (*Config, error) {
 			return "api_key", value
 		case "VULNERS_DB_PATH":
 			return "db_path", value
-		case "VULNERS_VERBOSE":
-			return "verbose", value
-		case "VULNERS_QUIET":
-			return "quiet", value
-		case "VULNERS_OFFLINE":
-			return "offline", value
-		case "VULNERS_ENABLE_AI_SCORE":
-			return "enable_ai_score", value
+		case "VULNERS_VERBOSE", "VULNERS_QUIET", "VULNERS_OFFLINE", "VULNERS_ENABLE_AI_SCORE":
+			// Pre-validated above; parse to bool so Koanf doesn't coerce strings.
+			b, _ := strconv.ParseBool(value)
+			return envKeyToKoanf(key), b
 		default:
 			return "", nil
 		}
@@ -74,6 +84,22 @@ func Load() (*Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+// envKeyToKoanf maps a VULNERS_ env var name to its koanf config key.
+func envKeyToKoanf(key string) string {
+	switch key {
+	case "VULNERS_VERBOSE":
+		return "verbose"
+	case "VULNERS_QUIET":
+		return "quiet"
+	case "VULNERS_OFFLINE":
+		return "offline"
+	case "VULNERS_ENABLE_AI_SCORE":
+		return "enable_ai_score"
+	default:
+		return ""
+	}
 }
 
 // configFilePath returns the YAML config file path.

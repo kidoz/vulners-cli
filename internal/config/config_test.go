@@ -53,6 +53,43 @@ func TestLoad_OfflineEnv(t *testing.T) {
 	assert.True(t, cfg.Offline)
 }
 
+func TestLoad_BoolEnvAcceptedForms(t *testing.T) {
+	// strconv.ParseBool accepts these forms. Each must be honored faithfully
+	// (especially "false" — a common footgun where env coercion surprises users).
+	for _, val := range []string{"1", "t", "T", "TRUE", "true", "True"} {
+		t.Run("offline="+val, func(t *testing.T) {
+			t.Setenv("VULNERS_OFFLINE", val)
+			t.Setenv("VULNERS_CONFIG", filepath.Join(t.TempDir(), "nonexistent.yaml"))
+			cfg, err := Load()
+			require.NoError(t, err)
+			assert.True(t, cfg.Offline, "value %q should parse as true", val)
+		})
+	}
+	for _, val := range []string{"0", "f", "F", "FALSE", "false", "False"} {
+		t.Run("offline="+val, func(t *testing.T) {
+			t.Setenv("VULNERS_OFFLINE", val)
+			t.Setenv("VULNERS_CONFIG", filepath.Join(t.TempDir(), "nonexistent.yaml"))
+			cfg, err := Load()
+			require.NoError(t, err)
+			assert.False(t, cfg.Offline, "value %q should parse as false", val)
+		})
+	}
+}
+
+func TestLoad_BoolEnvInvalidRejected(t *testing.T) {
+	// Values like "yes"/"no"/"off" are NOT valid booleans per strconv.ParseBool
+	// and must produce an error rather than a silent surprise.
+	for _, val := range []string{"yes", "no", "off", "on", "2", "maybe"} {
+		t.Run("offline="+val, func(t *testing.T) {
+			t.Setenv("VULNERS_OFFLINE", val)
+			t.Setenv("VULNERS_CONFIG", filepath.Join(t.TempDir(), "nonexistent.yaml"))
+			_, err := Load()
+			require.Error(t, err, "value %q should be rejected", val)
+			assert.Contains(t, err.Error(), "must be a boolean")
+		})
+	}
+}
+
 func TestLoad_YAMLFile(t *testing.T) {
 	dir := t.TempDir()
 	cfgFile := filepath.Join(dir, "config.yaml")
