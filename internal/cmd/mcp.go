@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/kidoz/vulners-cli/internal/cache"
 	"github.com/kidoz/vulners-cli/internal/inventory"
@@ -24,7 +25,8 @@ func (c *MCPCmd) Run(ctx context.Context, deps *Deps, store cache.Store, logger 
 		},
 		&mcp.ServerOptions{
 			Instructions: "Vulners vulnerability intelligence and scanning tools. " +
-				"Use search/cve for threat intel lookups, scan_repo for local Go repository scanning, " +
+				"Use search/cve for threat intel lookups, cpe for product/vendor search, " +
+				"scan_repo for local Go repository scanning, sbom_audit for CycloneDX/SPDX SBOM audit, " +
 				"and doctor to check environment health.",
 		},
 	)
@@ -37,7 +39,9 @@ func (c *MCPCmd) Run(ctx context.Context, deps *Deps, store cache.Store, logger 
 func registerMCPTools(server *mcp.Server, deps *Deps, store cache.Store, logger *slog.Logger) {
 	registerSearchTool(server, deps)
 	registerCVETool(server, deps, store)
+	registerCPETool(server, deps)
 	registerScanRepoTool(server, deps, store, logger)
+	registerSBOMAuditTool(server, deps)
 	registerDoctorTool(server, deps, store)
 }
 
@@ -96,6 +100,38 @@ func registerCVETool(server *mcp.Server, deps *Deps, store cache.Store) {
 	})
 }
 
+// --- cpe tool ---
+
+type cpeArgs struct {
+	Product string `json:"product" jsonschema:"Product name to search"`
+	Vendor  string `json:"vendor,omitempty" jsonschema:"Vendor name (defaults to product)"`
+	Limit   int    `json:"limit,omitempty" jsonschema:"Maximum results to return (default 10)"`
+}
+
+func registerCPETool(server *mcp.Server, deps *Deps) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "cpe",
+		Description: "Search by Common Platform Enumeration (CPE). Returns bulletins matching a product (and optional vendor).",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, args cpeArgs) (*mcp.CallToolResult, any, error) {
+		if deps.Intel == nil {
+			return mcpError("VULNERS_API_KEY is required for CPE search"), nil, nil
+		}
+		limit := args.Limit
+		if limit <= 0 {
+			limit = 10
+		}
+		vendor := args.Vendor
+		if vendor == "" {
+			vendor = args.Product
+		}
+		result, err := deps.Intel.SearchCPE(ctx, args.Product, vendor, limit)
+		if err != nil {
+			return mcpError(fmt.Sprintf("CPE search failed: %v", err)), nil, nil
+		}
+		return mcpJSON(result)
+	})
+}
+
 // --- scan_repo tool ---
 
 type scanRepoArgs struct {
@@ -140,6 +176,32 @@ func registerScanRepoTool(server *mcp.Server, deps *Deps, store cache.Store, log
 			Summary:       summarize(components, findings),
 		}
 		return mcpJSON(output)
+	})
+}
+
+// --- sbom_audit tool ---
+
+type sbomAuditArgs struct {
+	SBOM   string `json:"sbom" jsonschema:"SBOM document content (CycloneDX or SPDX JSON)"`
+	Format string `json:"format,omitempty" jsonschema:"SBOM format: cyclonedx or spdx (default cyclonedx)"`
+}
+
+func registerSBOMAuditTool(server *mcp.Server, deps *Deps) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "sbom_audit",
+		Description: "Audit a CycloneDX or SPDX SBOM document for vulnerable packages. Pass the SBOM document content as a string.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, args sbomAuditArgs) (*mcp.CallToolResult, any, error) {
+		if deps.Intel == nil {
+			return mcpError("VULNERS_API_KEY is required for SBOM audit"), nil, nil
+		}
+		if strings.TrimSpace(args.SBOM) == "" {
+			return mcpError("sbom argument is required"), nil, nil
+		}
+		result, err := deps.Intel.SBOMAudit(ctx, strings.NewReader(args.SBOM))
+		if err != nil {
+			return mcpError(fmt.Sprintf("SBOM audit failed: %v", err)), nil, nil
+		}
+		return mcpJSON(result)
 	})
 }
 

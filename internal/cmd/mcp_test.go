@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"testing"
 
 	vulners "github.com/kidoz/go-vulners"
@@ -42,7 +43,9 @@ func TestMCP_RegistersTools(t *testing.T) {
 
 	assert.True(t, toolNames["search"], "should have search tool")
 	assert.True(t, toolNames["cve"], "should have cve tool")
+	assert.True(t, toolNames["cpe"], "should have cpe tool")
 	assert.True(t, toolNames["scan_repo"], "should have scan_repo tool")
+	assert.True(t, toolNames["sbom_audit"], "should have sbom_audit tool")
 	assert.True(t, toolNames["doctor"], "should have doctor tool")
 }
 
@@ -70,6 +73,62 @@ func TestMCP_SearchTool(t *testing.T) {
 	var sr intel.SearchResult
 	require.NoError(t, json.Unmarshal([]byte(text), &sr))
 	assert.Equal(t, 1, sr.Total)
+}
+
+func TestMCP_CPETool(t *testing.T) {
+	client := &mockIntelClient{
+		searchCPEFn: func(_ context.Context, product, vendor string, limit int) (*vulners.CPESearchResult, error) {
+			assert.Equal(t, "chrome", product)
+			assert.Equal(t, "google", vendor)
+			return &vulners.CPESearchResult{BestMatch: "cpe:2.3:a:google:chrome:-", CPEs: []string{"cpe:2.3:a:google:chrome:-"}}, nil
+		},
+	}
+
+	result := callMCPTool(t, client, "cpe", map[string]any{
+		"product": "chrome",
+		"vendor":  "google",
+		"limit":   5,
+	})
+
+	require.False(t, result.IsError, "cpe should succeed")
+	require.Len(t, result.Content, 1)
+
+	text := extractText(t, result.Content[0])
+	var cpe vulners.CPESearchResult
+	require.NoError(t, json.Unmarshal([]byte(text), &cpe))
+	assert.Equal(t, "cpe:2.3:a:google:chrome:-", cpe.BestMatch)
+	require.Len(t, cpe.CPEs, 1)
+}
+
+func TestMCP_SBOMAuditTool(t *testing.T) {
+	client := &mockIntelClient{
+		sbomAuditFn: func(_ context.Context, sbom io.Reader) (*vulners.SBOMAuditResult, error) {
+			data, _ := io.ReadAll(sbom)
+			assert.Contains(t, string(data), "cyclonedx")
+			return &vulners.SBOMAuditResult{Packages: []vulners.SBOMPackageResult{{Package: "log4j", Version: "2.14.0"}}}, nil
+		},
+	}
+
+	result := callMCPTool(t, client, "sbom_audit", map[string]any{
+		"sbom":   `{"bomFormat":"cyclonedx"}`,
+		"format": "cyclonedx",
+	})
+
+	require.False(t, result.IsError, "sbom_audit should succeed")
+	require.Len(t, result.Content, 1)
+
+	text := extractText(t, result.Content[0])
+	var audit vulners.SBOMAuditResult
+	require.NoError(t, json.Unmarshal([]byte(text), &audit))
+	require.Len(t, audit.Packages, 1)
+}
+
+func TestMCP_SBOMAuditTool_EmptySBOM(t *testing.T) {
+	result := callMCPTool(t, &mockIntelClient{}, "sbom_audit", map[string]any{
+		"sbom": "",
+	})
+
+	assert.True(t, result.IsError, "empty sbom should error")
 }
 
 func TestMCP_DoctorTool(t *testing.T) {
