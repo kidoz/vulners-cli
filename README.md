@@ -188,7 +188,7 @@ Run vulners-cli as a [Model Context Protocol](https://modelcontextprotocol.io/) 
 vulners mcp
 ```
 
-Exposes tools for search, CVE lookup, CPE search, SBOM audit, and health checks to MCP-compatible clients (Claude Desktop, Cursor, etc.).
+Exposes tools for search, CVE lookup, CPE search, Go repo scanning, SBOM audit, smart software audit, and health checks to MCP-compatible clients (Claude Desktop, Cursor, etc.).
 
 ### Offline mode
 

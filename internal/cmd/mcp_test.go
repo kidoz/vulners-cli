@@ -46,6 +46,7 @@ func TestMCP_RegistersTools(t *testing.T) {
 	assert.True(t, toolNames["cpe"], "should have cpe tool")
 	assert.True(t, toolNames["scan_repo"], "should have scan_repo tool")
 	assert.True(t, toolNames["sbom_audit"], "should have sbom_audit tool")
+	assert.True(t, toolNames["audit_smart"], "should have audit_smart tool")
 	assert.True(t, toolNames["doctor"], "should have doctor tool")
 }
 
@@ -129,6 +130,68 @@ func TestMCP_SBOMAuditTool_EmptySBOM(t *testing.T) {
 	})
 
 	assert.True(t, result.IsError, "empty sbom should error")
+}
+
+func TestMCP_SmartAuditTool(t *testing.T) {
+	client := &mockIntelClient{
+		smartAuditFn: func(_ context.Context, software []string, catalog string) (*vulners.SmartAuditResult, error) {
+			assert.Equal(t, []string{"Apache 2.4.49"}, software)
+			assert.Equal(t, "official", catalog)
+			return &vulners.SmartAuditResult{
+				Items: []vulners.SmartAuditItem{
+					{
+						Input:      "Apache 2.4.49",
+						CPE:        "cpe:2.3:a:apache:http_server:2.4.49",
+						Confidence: 0.98,
+						Vulnerabilities: []vulners.SmartAuditVulnerability{
+							{ID: "CVE-2021-41773", Title: "Path Traversal"},
+						},
+					},
+				},
+			}, nil
+		},
+	}
+
+	result := callMCPTool(t, client, "audit_smart", map[string]any{
+		"software": []string{"Apache 2.4.49"},
+		"catalog":  "official",
+	})
+
+	require.False(t, result.IsError, "audit_smart should succeed")
+	require.Len(t, result.Content, 1)
+
+	text := extractText(t, result.Content[0])
+	var audit vulners.SmartAuditResult
+	require.NoError(t, json.Unmarshal([]byte(text), &audit))
+	require.Len(t, audit.Items, 1)
+	assert.Equal(t, "cpe:2.3:a:apache:http_server:2.4.49", audit.Items[0].CPE)
+	require.Len(t, audit.Items[0].Vulnerabilities, 1)
+	assert.Equal(t, "CVE-2021-41773", audit.Items[0].Vulnerabilities[0].ID)
+}
+
+func TestMCP_SmartAuditTool_EmptySoftware(t *testing.T) {
+	result := callMCPTool(t, &mockIntelClient{}, "audit_smart", map[string]any{
+		"software": []string{},
+	})
+
+	assert.True(t, result.IsError, "empty software should error")
+}
+
+func TestMCP_SmartAuditTool_DefaultCatalog(t *testing.T) {
+	var capturedCatalog string
+	client := &mockIntelClient{
+		smartAuditFn: func(_ context.Context, _ []string, catalog string) (*vulners.SmartAuditResult, error) {
+			capturedCatalog = catalog
+			return &vulners.SmartAuditResult{}, nil
+		},
+	}
+
+	result := callMCPTool(t, client, "audit_smart", map[string]any{
+		"software": []string{"OpenSSL 1.0.1"},
+	})
+
+	require.False(t, result.IsError)
+	assert.Equal(t, "official", capturedCatalog, "catalog should default to official")
 }
 
 func TestMCP_DoctorTool(t *testing.T) {

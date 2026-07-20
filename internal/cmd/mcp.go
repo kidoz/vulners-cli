@@ -27,6 +27,7 @@ func (c *MCPCmd) Run(ctx context.Context, deps *Deps, store cache.Store, logger 
 			Instructions: "Vulners vulnerability intelligence and scanning tools. " +
 				"Use search/cve for threat intel lookups, cpe for product/vendor search, " +
 				"scan_repo for local Go repository scanning, sbom_audit for CycloneDX/SPDX SBOM audit, " +
+				"audit_smart to resolve free-form software descriptions and audit them, " +
 				"and doctor to check environment health.",
 		},
 	)
@@ -42,6 +43,7 @@ func registerMCPTools(server *mcp.Server, deps *Deps, store cache.Store, logger 
 	registerCPETool(server, deps)
 	registerScanRepoTool(server, deps, store, logger)
 	registerSBOMAuditTool(server, deps)
+	registerSmartAuditTool(server, deps)
 	registerDoctorTool(server, deps, store)
 }
 
@@ -200,6 +202,36 @@ func registerSBOMAuditTool(server *mcp.Server, deps *Deps) {
 		result, err := deps.Intel.SBOMAudit(ctx, strings.NewReader(args.SBOM))
 		if err != nil {
 			return mcpError(fmt.Sprintf("SBOM audit failed: %v", err)), nil, nil
+		}
+		return mcpJSON(result)
+	})
+}
+
+// --- audit_smart tool ---
+
+type auditSmartArgs struct {
+	Software []string `json:"software" jsonschema:"Free-form software descriptions to resolve and audit (e.g. \"Apache 2.4.49\")"`
+	Catalog  string   `json:"catalog,omitempty" jsonschema:"Vulnerability catalog: official or extended (default official)"`
+}
+
+func registerSmartAuditTool(server *mcp.Server, deps *Deps) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "audit_smart",
+		Description: "Resolve free-form software descriptions (e.g. \"Apache 2.4.49\") to CPE/PURL and audit them for vulnerabilities. Best for triaging assets described in plain language.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, args auditSmartArgs) (*mcp.CallToolResult, any, error) {
+		if deps.Intel == nil {
+			return mcpError("VULNERS_API_KEY is required for smart audit"), nil, nil
+		}
+		if len(args.Software) == 0 {
+			return mcpError("software argument is required"), nil, nil
+		}
+		catalog := args.Catalog
+		if catalog == "" {
+			catalog = "official"
+		}
+		result, err := deps.Intel.SmartAudit(ctx, args.Software, catalog)
+		if err != nil {
+			return mcpError(fmt.Sprintf("smart audit failed: %v", err)), nil, nil
 		}
 		return mcpJSON(result)
 	})
