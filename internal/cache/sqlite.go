@@ -103,6 +103,7 @@ func (s *SQLiteStore) PutBulletins(ctx context.Context, collection string, bulle
 	defer func() { _ = stmt.Close() }()
 
 	now := time.Now().UTC().Format(time.RFC3339)
+	stored := 0
 	for _, b := range bulletins {
 		data, err := json.Marshal(b)
 		if err != nil {
@@ -112,6 +113,13 @@ func (s *SQLiteStore) PutBulletins(ctx context.Context, collection string, bulle
 		if _, err := stmt.ExecContext(ctx, b.ID, collection, string(data), b.Title, now); err != nil {
 			return fmt.Errorf("inserting bulletin %s: %w", b.ID, err)
 		}
+		stored++
+	}
+
+	// If every bulletin failed to persist, treat it as a failed sync rather
+	// than advancing synced_at and masking the failure as success.
+	if len(bulletins) > 0 && stored == 0 {
+		return fmt.Errorf("storing collection %s: all %d bulletins failed to marshal", collection, len(bulletins))
 	}
 
 	// Update collection metadata with the actual row count for this collection.
