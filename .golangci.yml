@@ -38,12 +38,20 @@ linters:
     gosec:
       excludes:
         - G304 # file inclusion via variable — expected for CLI tool
-        - G703 # file write via variable path — expected for CLI tool (output-file, cache, temp dirs)
 
   exclusions:
     paths:
       - vendor
       - testdata
+    rules:
+      # G703 (path traversal via taint analysis) is a newer gosec rule not in
+      # golangci-lint's config-verify enum, so it cannot live under
+      # gosec.excludes. Suppress it here for test fixtures that write files
+      # into t.TempDir() paths.
+      - path: _test\.go
+        linters:
+          - gosec
+        text: "G703"
 
 formatters:
   enable:
