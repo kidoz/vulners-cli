@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	vulners "github.com/kidoz/go-vulners"
@@ -24,7 +25,7 @@ const (
 type OSInfo struct {
 	Family  OSFamily
 	Distro  string // For Linux: ID from os-release
-	Version string // For Linux: VERSION_ID from os-release
+	Version string // Linux: VERSION_ID from os-release; Windows: full version (e.g. "10.0.19045")
 	OSName  string // For Windows: Caption (raw, e.g. "Microsoft Windows 10 Pro")
 
 	// BuildNumber is the Windows build segment used to disambiguate Windows 10
@@ -34,12 +35,17 @@ type OSInfo struct {
 
 // Scanner performs host inventory scanning.
 type Scanner struct {
-	exec Executor
+	exec   Executor
+	logger *slog.Logger
 }
 
-// NewScanner creates a new Scanner using the provided Executor.
-func NewScanner(exec Executor) *Scanner {
-	return &Scanner{exec: exec}
+// NewScanner creates a new Scanner using the provided Executor. A nil logger
+// discards diagnostic output.
+func NewScanner(exec Executor, logger *slog.Logger) *Scanner {
+	if logger == nil {
+		logger = slog.New(slog.DiscardHandler)
+	}
+	return &Scanner{exec: exec, logger: logger}
 }
 
 // DetectOS attempts to determine the target's operating system using the executor.
@@ -56,9 +62,9 @@ func (s *Scanner) DetectOS(ctx context.Context) (*OSInfo, error) {
 		}
 	}
 
-	// Fallback to Windows: prefer the CSV query (Caption + BuildNumber), then
-	// fall back to the plain Caption query for hosts where ConvertTo-Csv is
-	// unavailable or behaves unexpectedly.
+	// Fallback to Windows: prefer the CSV query (Caption + Version +
+	// BuildNumber), then fall back to the plain Caption query for hosts where
+	// ConvertTo-Csv is unavailable or behaves unexpectedly.
 	if info, ok := s.detectWindowsCSV(ctx); ok {
 		return info, nil
 	}
@@ -76,48 +82,59 @@ func (s *Scanner) detectWindowsCSV(ctx context.Context) (*OSInfo, bool) {
 	if err != nil || strings.TrimSpace(out) == "" {
 		return nil, false
 	}
-	caption, build := parseWindowsOSCSV(out)
+	caption, version, build := parseWindowsOSCSV(out)
 	if caption == "" {
 		return nil, false
 	}
-	return &OSInfo{Family: FamilyWindows, OSName: caption, BuildNumber: build}, true
+	return &OSInfo{Family: FamilyWindows, OSName: caption, Version: version, BuildNumber: build}, true
 }
 
-// parseWindowsOSCSV extracts Caption and BuildNumber from the output of
-// `Get-CimInstance Win32_OperatingSystem | Select-Object Caption,BuildNumber |
-// ConvertTo-Csv -NoTypeInformation`. ConvertTo-Csv quotes every field.
-func parseWindowsOSCSV(output string) (caption, build string) {
+// parseWindowsOSCSV extracts Caption, Version and BuildNumber from the output
+// of `Get-CimInstance Win32_OperatingSystem | Select-Object
+// Caption,Version,BuildNumber | ConvertTo-Csv -NoTypeInformation`.
+// ConvertTo-Csv quotes every field.
+func parseWindowsOSCSV(output string) (caption, version, build string) {
 	reader := csv.NewReader(strings.NewReader(output))
 	reader.FieldsPerRecord = -1 // tolerate trailing whitespace rows
 	records, err := reader.ReadAll()
 	if err != nil || len(records) < 2 {
-		return "", ""
+		return "", "", ""
 	}
 
 	headerIdx := findCSVHeader(records)
 	if headerIdx == -1 {
-		// No header row: treat the first non-empty record as the data row.
+		// No header row: treat the first non-empty record as the data row,
+		// with columns in query order (Caption, Version, BuildNumber).
 		for _, row := range records {
 			if len(row) >= 2 && strings.TrimSpace(row[0]) != "" {
-				return strings.TrimSpace(row[0]), strings.TrimSpace(row[1])
+				caption = strings.TrimSpace(row[0])
+				version = strings.TrimSpace(row[1])
+				if len(row) >= 3 {
+					build = strings.TrimSpace(row[2])
+				}
+				return caption, version, build
 			}
 		}
-		return "", ""
+		return "", "", ""
 	}
 
 	header := records[headerIdx]
-	capCol, buildCol := csvColumnIndex(header, "caption"), csvColumnIndex(header, "buildnumber")
 	if headerIdx+1 >= len(records) {
-		return "", ""
+		return "", "", ""
 	}
 	data := records[headerIdx+1]
-	if capCol >= 0 && capCol < len(data) {
-		caption = strings.TrimSpace(data[capCol])
+	caption = csvField(data, csvColumnIndex(header, "caption"))
+	version = csvField(data, csvColumnIndex(header, "version"))
+	build = csvField(data, csvColumnIndex(header, "buildnumber"))
+	return caption, version, build
+}
+
+// csvField returns the trimmed cell at idx, or "" when idx is out of range.
+func csvField(row []string, idx int) string {
+	if idx < 0 || idx >= len(row) {
+		return ""
 	}
-	if buildCol >= 0 && buildCol < len(data) {
-		build = strings.TrimSpace(data[buildCol])
-	}
-	return caption, build
+	return strings.TrimSpace(row[idx])
 }
 
 // findCSVHeader returns the index of the row whose first cell is "Caption"
@@ -221,10 +238,13 @@ func (s *Scanner) GatherWindows(ctx context.Context, _ *OSInfo) ([]string, []vul
 	kbs := parseLines(kbOut)
 
 	software, sErr := s.gatherWindowsSoftware(ctx)
-	// Only hard-fail when we collected nothing at all; a KB-only result is
-	// still useful and the API accepts an empty software list.
-	if sErr != nil && len(kbs) == 0 {
-		return nil, nil, fmt.Errorf("failed to gather Windows software: %w", sErr)
+	if sErr != nil {
+		// Only hard-fail when we collected nothing at all; a KB-only result is
+		// still useful and the API accepts an empty software list.
+		if len(kbs) == 0 {
+			return nil, nil, fmt.Errorf("failed to gather Windows software: %w", sErr)
+		}
+		s.logger.Warn("failed to gather Windows software, continuing with KBs only", "error", sErr)
 	}
 
 	return kbs, software, nil

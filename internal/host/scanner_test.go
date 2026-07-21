@@ -35,7 +35,7 @@ func TestScanner_DetectOS_Linux(t *testing.T) {
 			"cat /etc/os-release": "ID=ubuntu\nVERSION_ID=\"22.04\"\nID_LIKE=debian",
 		},
 	}
-	scanner := NewScanner(mock)
+	scanner := NewScanner(mock, nil)
 	info, err := scanner.DetectOS(context.Background())
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -50,19 +50,19 @@ func TestScanner_DetectOS_Linux(t *testing.T) {
 func TestScanner_DetectOS_Windows(t *testing.T) {
 	mock := &mockExecutor{
 		responses: map[string]string{
-			"Get-CimInstance Win32_OperatingSystem | Select-Object Caption,BuildNumber | ConvertTo-Csv -NoTypeInformation": "\"Caption\",\"BuildNumber\"\r\n\"Microsoft Windows 10 Pro\",\"19045\"",
+			winOSDetectCmd: "\"Caption\",\"Version\",\"BuildNumber\"\r\n\"Microsoft Windows 10 Pro\",\"10.0.19045\",\"19045\"",
 		},
 		errors: map[string]error{
 			"uname -s": fmt.Errorf("command not found"),
 		},
 	}
-	scanner := NewScanner(mock)
+	scanner := NewScanner(mock, nil)
 	info, err := scanner.DetectOS(context.Background())
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	expected := &OSInfo{Family: FamilyWindows, OSName: "Microsoft Windows 10 Pro", BuildNumber: "19045"}
+	expected := &OSInfo{Family: FamilyWindows, OSName: "Microsoft Windows 10 Pro", Version: "10.0.19045", BuildNumber: "19045"}
 	if !reflect.DeepEqual(info, expected) {
 		t.Errorf("expected %+v, got %+v", expected, info)
 	}
@@ -72,14 +72,14 @@ func TestScanner_DetectOS_Windows_CaptionFallback(t *testing.T) {
 	// CSV query unavailable; falls back to the plain Caption query.
 	mock := &mockExecutor{
 		responses: map[string]string{
-			"(Get-CimInstance Win32_OperatingSystem).Caption": "Microsoft Windows Server 2019 Datacenter",
+			winOSDetectCaptionCmd: "Microsoft Windows Server 2019 Datacenter",
 		},
 		errors: map[string]error{
-			"uname -s": fmt.Errorf("command not found"),
-			"Get-CimInstance Win32_OperatingSystem | Select-Object Caption,BuildNumber | ConvertTo-Csv -NoTypeInformation": fmt.Errorf("command not found"),
+			"uname -s":     fmt.Errorf("command not found"),
+			winOSDetectCmd: fmt.Errorf("command not found"),
 		},
 	}
-	scanner := NewScanner(mock)
+	scanner := NewScanner(mock, nil)
 	info, err := scanner.DetectOS(context.Background())
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -95,32 +95,44 @@ func TestParseWindowsOSCSV(t *testing.T) {
 		name        string
 		output      string
 		wantCaption string
+		wantVersion string
 		wantBuild   string
 	}{
 		{
 			name:        "standard",
-			output:      "\"Caption\",\"BuildNumber\"\r\n\"Microsoft Windows 10 Pro\",\"19045\"",
+			output:      "\"Caption\",\"Version\",\"BuildNumber\"\r\n\"Microsoft Windows 10 Pro\",\"10.0.19045\",\"19045\"",
 			wantCaption: "Microsoft Windows 10 Pro",
+			wantVersion: "10.0.19045",
 			wantBuild:   "19045",
 		},
 		{
 			name:        "windows 11",
-			output:      "\"Caption\",\"BuildNumber\"\n\"Microsoft Windows 10 Pro\",\"22631\"",
+			output:      "\"Caption\",\"Version\",\"BuildNumber\"\n\"Microsoft Windows 10 Pro\",\"10.0.22631\",\"22631\"",
 			wantCaption: "Microsoft Windows 10 Pro",
+			wantVersion: "10.0.22631",
 			wantBuild:   "22631",
+		},
+		{
+			name:        "no header",
+			output:      "\"Microsoft Windows 10 Pro\",\"10.0.19045\",\"19045\"\r\n\"\",\"\",\"\"",
+			wantCaption: "Microsoft Windows 10 Pro",
+			wantVersion: "10.0.19045",
+			wantBuild:   "19045",
 		},
 		{
 			name:        "empty",
 			output:      "",
 			wantCaption: "",
+			wantVersion: "",
 			wantBuild:   "",
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			cap, build := parseWindowsOSCSV(tc.output)
-			if cap != tc.wantCaption || build != tc.wantBuild {
-				t.Errorf("parseWindowsOSCSV() = (%q, %q), want (%q, %q)", cap, build, tc.wantCaption, tc.wantBuild)
+			caption, version, build := parseWindowsOSCSV(tc.output)
+			if caption != tc.wantCaption || version != tc.wantVersion || build != tc.wantBuild {
+				t.Errorf("parseWindowsOSCSV() = (%q, %q, %q), want (%q, %q, %q)",
+					caption, version, build, tc.wantCaption, tc.wantVersion, tc.wantBuild)
 			}
 		})
 	}
@@ -132,7 +144,7 @@ func TestScanner_GatherPackages_Debian(t *testing.T) {
 			"dpkg-query -W -f='${Package} ${Version} ${Architecture}\\n'": "libc6 2.35-0ubuntu3 amd64\ncurl 7.81.0-1ubuntu1.16 amd64",
 		},
 	}
-	scanner := NewScanner(mock)
+	scanner := NewScanner(mock, nil)
 	info := &OSInfo{Family: FamilyDeb}
 
 	packages, err := scanner.GatherPackages(context.Background(), info)
@@ -153,7 +165,7 @@ func TestScanner_GatherWindows_GetPackage(t *testing.T) {
 			winSoftwareGetPackageCmd: "Git\t2.42.0\r\nMozilla Firefox\t118.0",
 		},
 	}
-	scanner := NewScanner(mock)
+	scanner := NewScanner(mock, nil)
 	info := &OSInfo{Family: FamilyWindows}
 
 	kbs, software, err := scanner.GatherWindows(context.Background(), info)
@@ -181,7 +193,7 @@ func TestScanner_GatherWindows_RegistryFallback(t *testing.T) {
 			winSoftwareRegistryCmd:   "Git\t2.42.0",
 		},
 	}
-	scanner := NewScanner(mock)
+	scanner := NewScanner(mock, nil)
 	info := &OSInfo{Family: FamilyWindows}
 
 	kbs, software, err := scanner.GatherWindows(context.Background(), info)
@@ -194,5 +206,31 @@ func TestScanner_GatherWindows_RegistryFallback(t *testing.T) {
 	wantSoftware := []vulners.WinAuditItem{{Software: "Git", Version: "2.42.0"}}
 	if !reflect.DeepEqual(software, wantSoftware) {
 		t.Errorf("software = %+v, want %+v", software, wantSoftware)
+	}
+}
+
+func TestScanner_GatherWindows_SoftwareFailureKBsOnly(t *testing.T) {
+	// Both software sources fail, but KBs were collected: no error, KB-only result.
+	mock := &mockExecutor{
+		responses: map[string]string{
+			winKBCmd: "KB1234",
+		},
+		errors: map[string]error{
+			winSoftwareGetPackageCmd: fmt.Errorf("Get-Package failed"),
+			winSoftwareRegistryCmd:   fmt.Errorf("registry query failed"),
+		},
+	}
+	scanner := NewScanner(mock, nil)
+	info := &OSInfo{Family: FamilyWindows}
+
+	kbs, software, err := scanner.GatherWindows(context.Background(), info)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !reflect.DeepEqual(kbs, []string{"KB1234"}) {
+		t.Errorf("kbs = %v", kbs)
+	}
+	if len(software) != 0 {
+		t.Errorf("software = %+v, want empty", software)
 	}
 }

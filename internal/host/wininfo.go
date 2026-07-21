@@ -13,8 +13,10 @@ import (
 // so the build number is the authoritative disambiguator.
 const windowsBuild11Threshold = 22000
 
-// serverYearRe captures the year of a "Windows Server <year>" caption.
-var serverYearRe = regexp.MustCompile(`(?i)\bserver\s+(20\d{2})\b`)
+// serverYearRe captures the year and optional R2 revision of a
+// "Windows Server <year> [R2]" caption. R2 releases are distinct OSes with
+// their own patch streams, so the suffix must be preserved.
+var serverYearRe = regexp.MustCompile(`(?i)\bserver\s+(20\d{2})(?:\s+(r2))?\b`)
 
 // win10Re detects "Windows 10" captions. Note that Win32_OperatingSystem
 // reports "Windows 10" for both Windows 10 and Windows 11; the build number
@@ -32,8 +34,10 @@ var legacyClientRe = regexp.MustCompile(`(?i)\bwindows\s+(vista|xp|7|8\.1|8)\b`)
 
 // PowerShell command templates used by the Windows scanner path.
 const (
-	// winOSDetectCmd returns Caption and BuildNumber as CSV for robust parsing.
-	winOSDetectCmd = `Get-CimInstance Win32_OperatingSystem | Select-Object Caption,BuildNumber | ConvertTo-Csv -NoTypeInformation`
+	// winOSDetectCmd returns Caption, Version and BuildNumber as CSV for
+	// robust parsing. Version (e.g. "10.0.19045") is forwarded to the audit
+	// API as os_version.
+	winOSDetectCmd = `Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber | ConvertTo-Csv -NoTypeInformation`
 
 	// winOSDetectCaptionCmd is the legacy fallback that queries only the Caption.
 	winOSDetectCaptionCmd = `(Get-CimInstance Win32_OperatingSystem).Caption`
@@ -46,8 +50,9 @@ const (
 	winSoftwareGetPackageCmd = `Get-Package -ErrorAction SilentlyContinue | Where-Object { $_.Name } | ForEach-Object { "$($_.Name)` + "\t" + `$($_.Version)" }`
 
 	// winSoftwareRegistryCmd is the fallback that reads the Uninstall registry
-	// keys (covers Server Core and hosts without PackageManagement).
-	winSoftwareRegistryCmd = `$paths='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'; Get-ItemProperty $paths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName } | ForEach-Object { "$($_.DisplayName)` + "\t" + `$($_.DisplayVersion)" }`
+	// keys, including per-user installs (covers Server Core and hosts without
+	// PackageManagement).
+	winSoftwareRegistryCmd = `$paths='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*','HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'; Get-ItemProperty $paths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName } | ForEach-Object { "$($_.DisplayName)` + "\t" + `$($_.DisplayVersion)" }`
 )
 
 // NormalizeWindowsOS converts the raw Win32_OperatingSystem Caption (and the
@@ -57,27 +62,31 @@ const (
 // Returns "Windows" when the caption cannot be confidently mapped so that the
 // caller surfaces the API's rejection rather than silently miscategorizing.
 func NormalizeWindowsOS(caption, buildNumber string) string {
-	cap := strings.TrimSpace(caption)
-	if cap == "" {
+	caption = strings.TrimSpace(caption)
+	if caption == "" {
 		return "Windows"
 	}
 
 	// Strip the leading "Microsoft " prefix when present.
-	cap = strings.TrimPrefix(cap, "Microsoft ")
-	cap = strings.TrimPrefix(cap, "microsoft ")
+	caption = strings.TrimPrefix(caption, "Microsoft ")
+	caption = strings.TrimPrefix(caption, "microsoft ")
 
-	// Windows Server: keep the year, drop edition suffixes.
-	if year := serverYearRe.FindStringSubmatch(cap); len(year) == 2 {
-		return "Windows Server " + year[1]
+	// Windows Server: keep the year and R2 revision, drop edition suffixes.
+	if m := serverYearRe.FindStringSubmatch(caption); m != nil {
+		name := "Windows Server " + m[1]
+		if m[2] != "" {
+			name += " R2"
+		}
+		return name
 	}
 
 	// Windows 10/11 family. Real Win32_OperatingSystem captions report
 	// "Windows 10" for both Win10 and Win11; the build number disambiguates.
 	// Some newer builds report "Windows 11" explicitly, handled first.
-	if win11ExplicitRe.MatchString(cap) {
+	if win11ExplicitRe.MatchString(caption) {
 		return "Windows 11"
 	}
-	if win10Re.MatchString(cap) {
+	if win10Re.MatchString(caption) {
 		if parseWindowsBuild(buildNumber) >= windowsBuild11Threshold {
 			return "Windows 11"
 		}
@@ -85,7 +94,7 @@ func NormalizeWindowsOS(caption, buildNumber string) string {
 	}
 
 	// Legacy client SKUs carry their version literal in the caption.
-	if m := legacyClientRe.FindString(cap); m != "" {
+	if m := legacyClientRe.FindString(caption); m != "" {
 		return normalizeCaptionCase(m)
 	}
 
@@ -113,7 +122,7 @@ func parseWindowsBuild(build string) int {
 }
 
 // normalizeCaptionCase title-cases a matched "windows <ver>" literal so it
-// reads naturally in the API payload (e.g. "Windows 8.1").
+// reads naturally in the API payload (e.g. "Windows 8.1", "Windows XP").
 func normalizeCaptionCase(s string) string {
 	parts := strings.Fields(s)
 	for i, p := range parts {
@@ -121,7 +130,12 @@ func normalizeCaptionCase(s string) string {
 			parts[i] = "Windows"
 			continue
 		}
-		parts[i] = p
+		switch strings.ToLower(p) {
+		case "vista":
+			parts[i] = "Vista"
+		case "xp":
+			parts[i] = "XP"
+		}
 	}
 	return strings.Join(parts, " ")
 }

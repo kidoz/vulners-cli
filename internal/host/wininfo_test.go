@@ -21,8 +21,10 @@ func TestNormalizeWindowsOS(t *testing.T) {
 		{"10 plain build 18362", "Windows 10 Home", "18362", "Windows 10"},
 		{"10 no build number", "Microsoft Windows 10 Pro", "", "Windows 10"},
 
-		// Windows Server: year retained, edition dropped.
-		{"Server 2012 R2", "Microsoft Windows Server 2012 R2 Datacenter", "6.3.9600", "Windows Server 2012"},
+		// Windows Server: year and R2 revision retained, edition dropped.
+		{"Server 2012", "Microsoft Windows Server 2012 Standard", "6.2.9200", "Windows Server 2012"},
+		{"Server 2012 R2", "Microsoft Windows Server 2012 R2 Datacenter", "6.3.9600", "Windows Server 2012 R2"},
+		{"Server 2008 R2 lowercase r2", "Microsoft Windows Server 2008 r2 Enterprise", "6.1.7601", "Windows Server 2008 R2"},
 		{"Server 2016", "Microsoft Windows Server 2016 Standard", "10.0.14393", "Windows Server 2016"},
 		{"Server 2019 Datacenter", "Microsoft Windows Server 2019 Datacenter", "10.0.17763", "Windows Server 2019"},
 		{"Server 2022", "Microsoft Windows Server 2022 Standard", "10.0.20348", "Windows Server 2022"},
@@ -39,6 +41,8 @@ func TestNormalizeWindowsOS(t *testing.T) {
 		{"empty caption", "", "10.0.19045", "Windows"},
 		{"unknown caption", "Unknown OS", "10.0.19045", "Windows"},
 		{"lowercase microsoft prefix", "microsoft windows 10 pro", "10.0.19045", "Windows 10"},
+		{"lowercase vista", "microsoft windows vista business", "6.0.6000", "Windows Vista"},
+		{"lowercase xp", "microsoft windows xp professional", "5.1.2600", "Windows XP"},
 	}
 
 	for _, tc := range tests {

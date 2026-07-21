@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/kidoz/vulners-cli/internal/host"
@@ -21,7 +22,7 @@ type ScanHostCmd struct {
 // Run executes the 'scan host' command.
 //
 //nolint:gocyclo,funlen // Command setup logic naturally requires branching.
-func (c *ScanHostCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
+func (c *ScanHostCmd) Run(ctx context.Context, globals *CLI, deps *Deps, logger *slog.Logger) error {
 	if err := validateNonScanFormat(globals.Output); err != nil {
 		return err
 	}
@@ -46,7 +47,7 @@ func (c *ScanHostCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
 	}
 	defer func() { _ = executor.Close() }()
 
-	scanner := host.NewScanner(executor)
+	scanner := host.NewScanner(executor, logger)
 	info, err := scanner.DetectOS(ctx)
 	if err != nil {
 		return fmt.Errorf("OS detection failed: %w", err)
