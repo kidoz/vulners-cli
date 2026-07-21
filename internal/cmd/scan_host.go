@@ -52,27 +52,32 @@ func (c *ScanHostCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
 		return fmt.Errorf("OS detection failed: %w", err)
 	}
 
-	packages, err := scanner.GatherPackages(ctx, info)
-	if err != nil {
-		return fmt.Errorf("failed to gather packages: %w", err)
-	}
-
-	if len(packages) == 0 {
-		return fmt.Errorf("no packages found on the target host")
-	}
-
 	var result interface{}
 	var scanName string
 
 	if info.Family == host.FamilyWindows {
 		scanName = "scan host (windows)"
-		// info.OSName might be full string like "Microsoft Windows 10 Pro"
-		result, err = deps.Intel.KBAudit(ctx, info.OSName, packages)
+		kbs, software, gErr := scanner.GatherWindows(ctx, info)
+		if gErr != nil {
+			return fmt.Errorf("failed to gather Windows inventory: %w", gErr)
+		}
+		if len(kbs) == 0 && len(software) == 0 {
+			return fmt.Errorf("no KBs or installed software found on the target host")
+		}
+		osName := host.NormalizeWindowsOS(info.OSName, info.BuildNumber)
+		result, err = deps.Intel.WinAudit(ctx, osName, info.Version, kbs, software)
 		if err != nil {
 			return fmt.Errorf("windows audit failed: %w", err)
 		}
 	} else {
 		scanName = "scan host (linux)"
+		packages, gErr := scanner.GatherPackages(ctx, info)
+		if gErr != nil {
+			return fmt.Errorf("failed to gather packages: %w", gErr)
+		}
+		if len(packages) == 0 {
+			return fmt.Errorf("no packages found on the target host")
+		}
 		result, err = deps.Intel.LinuxAudit(ctx, info.Distro, info.Version, packages)
 		if err != nil {
 			return fmt.Errorf("linux audit failed: %w", err)

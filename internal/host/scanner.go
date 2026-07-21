@@ -2,8 +2,11 @@ package host
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
 	"strings"
+
+	vulners "github.com/kidoz/go-vulners"
 )
 
 // OSFamily represents the package management family of an OS.
@@ -22,7 +25,11 @@ type OSInfo struct {
 	Family  OSFamily
 	Distro  string // For Linux: ID from os-release
 	Version string // For Linux: VERSION_ID from os-release
-	OSName  string // For Windows: Caption
+	OSName  string // For Windows: Caption (raw, e.g. "Microsoft Windows 10 Pro")
+
+	// BuildNumber is the Windows build segment used to disambiguate Windows 10
+	// vs Windows 11 (captions report "Windows 10" for both).
+	BuildNumber string
 }
 
 // Scanner performs host inventory scanning.
@@ -49,13 +56,90 @@ func (s *Scanner) DetectOS(ctx context.Context) (*OSInfo, error) {
 		}
 	}
 
-	// Fallback to trying Windows WMI / PowerShell
-	out, err = s.exec.Execute(ctx, "(Get-CimInstance Win32_OperatingSystem).Caption")
-	if err == nil && out != "" {
+	// Fallback to Windows: prefer the CSV query (Caption + BuildNumber), then
+	// fall back to the plain Caption query for hosts where ConvertTo-Csv is
+	// unavailable or behaves unexpectedly.
+	if info, ok := s.detectWindowsCSV(ctx); ok {
+		return info, nil
+	}
+	if out, err := s.exec.Execute(ctx, winOSDetectCaptionCmd); err == nil && strings.TrimSpace(out) != "" {
 		return &OSInfo{Family: FamilyWindows, OSName: strings.TrimSpace(out)}, nil
 	}
 
 	return nil, fmt.Errorf("unable to detect supported operating system")
+}
+
+// detectWindowsCSV runs the CSV OS-detection query and returns the parsed
+// OSInfo. The boolean indicates whether detection succeeded.
+func (s *Scanner) detectWindowsCSV(ctx context.Context) (*OSInfo, bool) {
+	out, err := s.exec.Execute(ctx, winOSDetectCmd)
+	if err != nil || strings.TrimSpace(out) == "" {
+		return nil, false
+	}
+	caption, build := parseWindowsOSCSV(out)
+	if caption == "" {
+		return nil, false
+	}
+	return &OSInfo{Family: FamilyWindows, OSName: caption, BuildNumber: build}, true
+}
+
+// parseWindowsOSCSV extracts Caption and BuildNumber from the output of
+// `Get-CimInstance Win32_OperatingSystem | Select-Object Caption,BuildNumber |
+// ConvertTo-Csv -NoTypeInformation`. ConvertTo-Csv quotes every field.
+func parseWindowsOSCSV(output string) (caption, build string) {
+	reader := csv.NewReader(strings.NewReader(output))
+	reader.FieldsPerRecord = -1 // tolerate trailing whitespace rows
+	records, err := reader.ReadAll()
+	if err != nil || len(records) < 2 {
+		return "", ""
+	}
+
+	headerIdx := findCSVHeader(records)
+	if headerIdx == -1 {
+		// No header row: treat the first non-empty record as the data row.
+		for _, row := range records {
+			if len(row) >= 2 && strings.TrimSpace(row[0]) != "" {
+				return strings.TrimSpace(row[0]), strings.TrimSpace(row[1])
+			}
+		}
+		return "", ""
+	}
+
+	header := records[headerIdx]
+	capCol, buildCol := csvColumnIndex(header, "caption"), csvColumnIndex(header, "buildnumber")
+	if headerIdx+1 >= len(records) {
+		return "", ""
+	}
+	data := records[headerIdx+1]
+	if capCol >= 0 && capCol < len(data) {
+		caption = strings.TrimSpace(data[capCol])
+	}
+	if buildCol >= 0 && buildCol < len(data) {
+		build = strings.TrimSpace(data[buildCol])
+	}
+	return caption, build
+}
+
+// findCSVHeader returns the index of the row whose first cell is "Caption"
+// (case-insensitive), or -1 when no header is present.
+func findCSVHeader(records [][]string) int {
+	for i, row := range records {
+		if len(row) >= 2 && strings.EqualFold(strings.TrimSpace(row[0]), "Caption") {
+			return i
+		}
+	}
+	return -1
+}
+
+// csvColumnIndex returns the position of the named column (case-insensitive),
+// or -1 when absent.
+func csvColumnIndex(header []string, name string) int {
+	for i, col := range header {
+		if strings.EqualFold(strings.TrimSpace(col), name) {
+			return i
+		}
+	}
+	return -1
 }
 
 // detectLinux fingerprints a Linux distribution by parsing /etc/os-release.
@@ -103,7 +187,8 @@ func (s *Scanner) detectLinux(ctx context.Context) (*OSInfo, error) {
 	return info, nil
 }
 
-// GatherPackages retrieves the list of installed packages or updates based on the OS family.
+// GatherPackages retrieves the list of installed Linux packages for the
+// detected OS family. Use GatherWindows for Windows hosts.
 func (s *Scanner) GatherPackages(ctx context.Context, info *OSInfo) ([]string, error) {
 	var cmd string
 	switch info.Family {
@@ -113,10 +198,8 @@ func (s *Scanner) GatherPackages(ctx context.Context, info *OSInfo) ([]string, e
 		cmd = "rpm -qa --qf '%{NAME} %{VERSION}-%{RELEASE} %{ARCH}\\n'"
 	case FamilyAlpine:
 		cmd = "apk info -v"
-	case FamilyWindows:
-		cmd = "Get-HotFix | Select-Object -ExpandProperty HotFixID"
 	default:
-		return nil, fmt.Errorf("unsupported OS family: %s", info.Family)
+		return nil, fmt.Errorf("unsupported OS family: %s (use GatherWindows for Windows)", info.Family)
 	}
 
 	out, err := s.exec.Execute(ctx, cmd)
@@ -125,6 +208,42 @@ func (s *Scanner) GatherPackages(ctx context.Context, info *OSInfo) ([]string, e
 	}
 
 	return parseLines(out), nil
+}
+
+// GatherWindows retrieves installed KBs and software inventory from a Windows
+// host. Software is collected via Get-Package first, falling back to the
+// Uninstall registry keys when Get-Package returns nothing or fails.
+func (s *Scanner) GatherWindows(ctx context.Context, _ *OSInfo) ([]string, []vulners.WinAuditItem, error) {
+	kbOut, err := s.exec.Execute(ctx, winKBCmd)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to gather Windows KBs: %w", err)
+	}
+	kbs := parseLines(kbOut)
+
+	software, sErr := s.gatherWindowsSoftware(ctx)
+	// Only hard-fail when we collected nothing at all; a KB-only result is
+	// still useful and the API accepts an empty software list.
+	if sErr != nil && len(kbs) == 0 {
+		return nil, nil, fmt.Errorf("failed to gather Windows software: %w", sErr)
+	}
+
+	return kbs, software, nil
+}
+
+// gatherWindowsSoftware tries Get-Package and falls back to the registry scan
+// when the primary source returns nothing or fails.
+func (s *Scanner) gatherWindowsSoftware(ctx context.Context) ([]vulners.WinAuditItem, error) {
+	if out, err := s.exec.Execute(ctx, winSoftwareGetPackageCmd); err == nil {
+		if items := ParseWindowsSoftware(parseLines(out)); len(items) > 0 {
+			return items, nil
+		}
+	}
+
+	out, err := s.exec.Execute(ctx, winSoftwareRegistryCmd)
+	if err != nil {
+		return nil, err
+	}
+	return ParseWindowsSoftware(parseLines(out)), nil
 }
 
 func parseLines(output string) []string {
