@@ -376,7 +376,8 @@ func (v *VulnersClient) GetSuggestion(ctx context.Context, fieldName string) ([]
 func (v *VulnersClient) VulnsSummaryReport(ctx context.Context, limit, offset int) (*vulners.VulnsSummary, error) {
 	v.logger.Debug("vulns summary report", "limit", limit, "offset", offset)
 
-	result, err := v.client.Report().VulnsSummaryReport(ctx,
+	result, err := v.client.Report().VulnsSummaryReport(
+		ctx,
 		vulners.WithReportLimit(limit),
 		vulners.WithReportOffset(offset),
 	)
@@ -389,7 +390,8 @@ func (v *VulnersClient) VulnsSummaryReport(ctx context.Context, limit, offset in
 func (v *VulnersClient) VulnsList(ctx context.Context, limit, offset int) ([]vulners.VulnItem, error) {
 	v.logger.Debug("vulns list", "limit", limit, "offset", offset)
 
-	result, err := v.client.Report().VulnsList(ctx,
+	result, err := v.client.Report().VulnsList(
+		ctx,
 		vulners.WithReportLimit(limit),
 		vulners.WithReportOffset(offset),
 	)
@@ -402,7 +404,8 @@ func (v *VulnersClient) VulnsList(ctx context.Context, limit, offset int) ([]vul
 func (v *VulnersClient) HostVulns(ctx context.Context, limit, offset int) ([]vulners.HostVuln, error) {
 	v.logger.Debug("host vulns", "limit", limit, "offset", offset)
 
-	result, err := v.client.Report().HostVulns(ctx,
+	result, err := v.client.Report().HostVulns(
+		ctx,
 		vulners.WithReportLimit(limit),
 		vulners.WithReportOffset(offset),
 	)
@@ -415,7 +418,8 @@ func (v *VulnersClient) HostVulns(ctx context.Context, limit, offset int) ([]vul
 func (v *VulnersClient) ScanList(ctx context.Context, limit, offset int) ([]vulners.ScanItem, error) {
 	v.logger.Debug("scan list", "limit", limit, "offset", offset)
 
-	result, err := v.client.Report().ScanList(ctx,
+	result, err := v.client.Report().ScanList(
+		ctx,
 		vulners.WithReportLimit(limit),
 		vulners.WithReportOffset(offset),
 	)

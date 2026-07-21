@@ -12,7 +12,8 @@ import (
 func testKong(t *testing.T) *kong.Kong {
 	t.Helper()
 	var cli CLI
-	k, err := kong.New(&cli,
+	k, err := kong.New(
+		&cli,
 		kong.Name("vulners"),
 		kong.Exit(func(_ int) {}),
 	)

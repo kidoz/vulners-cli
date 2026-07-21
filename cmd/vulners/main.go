@@ -163,7 +163,8 @@ func run(cfg *config.Config, cli *icmd.CLI, deps *icmd.Deps, store cache.Store, 
 	signalCtx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	kongCtx := kong.Parse(cli,
+	kongCtx := kong.Parse(
+		cli,
 		kong.Name("vulners"),
 		kong.Description("CLI vulnerability scanner powered by Vulners"),
 		kong.UsageOnError(),

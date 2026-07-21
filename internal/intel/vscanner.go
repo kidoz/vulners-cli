@@ -45,7 +45,8 @@ func NewVScannerClient(apiKey string, logger *slog.Logger) (*VulnersVScannerClie
 		return nil, fmt.Errorf("VULNERS_API_KEY is required")
 	}
 
-	c, err := vscanner.NewClient(apiKey,
+	c, err := vscanner.NewClient(
+		apiKey,
 		vscanner.WithTimeout(defaultTimeout),
 		vscanner.WithUserAgent("vulners-cli/"+Version),
 	)

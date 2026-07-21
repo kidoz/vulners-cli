@@ -79,7 +79,8 @@ func writeScanMarkdown(w io.Writer, d mdData) error {
 	_, _ = fmt.Fprintln(w, "| Severity | ID | Component | CVSS | Fix |")
 	_, _ = fmt.Fprintln(w, "|----------|----|-----------|------|-----|")
 	for _, f := range d.Findings {
-		_, _ = fmt.Fprintf(w, "| %s | %s | %s | %.1f | %s |\n",
+		_, _ = fmt.Fprintf(
+			w, "| %s | %s | %s | %.1f | %s |\n",
 			escapeMD(strings.ToUpper(f.Severity)),
 			escapeMD(f.VulnID),
 			escapeMD(f.ComponentRef),
@@ -148,7 +149,8 @@ func writeMapMarkdown(w io.Writer, m map[string]any) {
 	_, _ = fmt.Fprintln(w, "| Key | Value |")
 	_, _ = fmt.Fprintln(w, "|-----|-------|")
 	for _, k := range sortedKeys(m) {
-		_, _ = fmt.Fprintf(w, "| %s | %s |\n",
+		_, _ = fmt.Fprintf(
+			w, "| %s | %s |\n",
 			escapeMD(k),
 			escapeMD(truncate(fmt.Sprintf("%v", m[k]), 120)),
 		)

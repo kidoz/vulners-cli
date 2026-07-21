@@ -36,7 +36,8 @@ func (c *ScanImageCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store 
 		result.Distro = di
 	}
 
-	logger.Info("image scanned",
+	logger.Info(
+		"image scanned",
 		"components", len(result.Components),
 		"image", c.Image,
 		"distro", result.Distro,
@@ -77,7 +78,8 @@ func (c *ScanImageCmd) scanImageOnline(
 	// If we have a distro and OS packages, use LinuxAudit for the OS packages.
 	var findings []model.Finding
 	if result.Distro != nil && len(osComps) > 0 {
-		logger.Info("using LinuxAudit for OS packages",
+		logger.Info(
+			"using LinuxAudit for OS packages",
 			"distro", result.Distro.Name,
 			"version", result.Distro.Version,
 			"osPackages", len(osComps),
