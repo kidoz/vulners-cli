@@ -44,6 +44,17 @@ export VULNERS_API_KEY=your-api-key-here
 
 See [`.env.example`](.env.example) for a template. Get an API key at [vulners.com](https://vulners.com).
 
+## Documentation
+
+Documentation is organized with the [Diátaxis](https://diataxis.fr/) framework:
+
+- [Tutorials](docs/tutorials/) — learn by doing
+- [How-to guides](docs/how-to/) — complete a specific task, such as [GitHub Actions](docs/how-to/github-actions.md) or [GitLab CI](docs/how-to/gitlab-ci.md)
+- [Reference](docs/reference/) — commands, flags, formats, and exit codes
+- [Explanation](docs/explanation/) — how scanning works and why
+
+Start at [docs/README.md](docs/README.md).
+
 ## Commands
 
 ### Intel commands
@@ -278,7 +289,7 @@ vulners scan repo . --plan
 
 # Command specification for tool integration
 vulners spec
-vulners schema scan
+vulners spec --schema scan
 ```
 
 ## Policy & exit codes

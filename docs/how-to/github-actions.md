@@ -1,15 +1,15 @@
-# GitHub Actions Integration Guide
+# Scan a repository with GitHub Actions
 
-This guide provides a detailed look at integrating `vulners-cli` with GitHub Actions for automated vulnerability scanning.
+This guide shows how to run `vulners-cli` in GitHub Actions and publish findings to the Security tab.
 
-## Key Integration Features
+## What you get
 
 `vulners-cli` supports several GitHub-native features:
-1.  **SARIF Reporting:** Integrating with the **Security** tab and Code Scanning.
-2.  **Reusable Workflow:** Simple, one-liner job definitions.
-3.  **PR Annotations:** Visualization of security issues directly on your code changes.
+1.  **SARIF reporting:** Integrates with the **Security** tab and Code Scanning.
+2.  **Reusable workflow:** Simple, one-line job definitions.
+3.  **PR annotations:** Shows security issues directly on changed files.
 
-## Reusable Workflow Example
+## Reusable workflow example
 
 Add this to `.github/workflows/security.yml`:
 
@@ -33,7 +33,7 @@ jobs:
       vulners-api-key: ${{ secrets.VULNERS_API_KEY }}
 ```
 
-## Manual Setup Example
+## Manual setup example
 
 For advanced control, use the `vulners` binary directly:
 
@@ -48,10 +48,10 @@ jobs:
       contents: read
       security-events: write # Required for upload-sarif
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version-file: go.mod
 
       - name: Install Vulners CLI
         run: go install github.com/kidoz/vulners-cli/cmd/vulners@latest
@@ -74,7 +74,7 @@ jobs:
           category: vulners-scan
 ```
 
-## Security Alerts & Pull Request Integration
+## Security alerts and pull request integration
 
 By using the SARIF output and the `upload-sarif` action, you gain:
 
@@ -82,8 +82,16 @@ By using the SARIF output and the `upload-sarif` action, you gain:
 - **PR Check Failure:** If `--fail-on` is used and vulnerabilities are found, the job will fail, and the PR check will show as failed.
 - **Code Annotations:** If the scan identifies a vulnerability in a specific file and line (e.g., in a dependency file), GitHub will annotate that file in the PR view.
 
-## Integration Best Practices
+## Integration best practices
 
 - **Scan SBOMs:** For faster scans, generate an SBOM first (e.g., using `syft`) and then run `vulners scan sbom sbom.json`.
 - **Caching:** Cache the `vulners` database to speed up repeated runs in your pipeline.
-- **Suppress False Positives:** Use OpenVEX documents (`--vex`) to suppress vulnerabilities that aren't reachable or have been accepted as risks.
+- **Suppress false positives:** Use OpenVEX documents (`--vex`) to suppress vulnerabilities that aren't reachable or have been accepted as risks.
+
+`scan repo` runs Go reachability analysis in-process, so the Go toolchain installed by `setup-go` must match the project's `go.mod`.
+
+## Related
+
+- [Scan a repository with GitLab CI](gitlab-ci.md)
+- [CLI reference](../reference/cli.md)
+- [How vulners-cli scans](../explanation/scanning-model.md)

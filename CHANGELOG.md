@@ -19,8 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Usage and configuration errors now exit with code 2; runtime errors remain code 3.
 - Missing API keys, unsupported output formats, and invalid `--fail-on` values are usage errors on every command.
 - `--fail-on` ignores govulncheck findings that are imported but not reachable.
+- Reachable findings with unknown severity fail closed under `--fail-on`.
 - Scanner and inventory failures now abort scans instead of being skipped: component search errors, malformed manifests, image `LinuxAudit` failures, and non-zero `govulncheck` exits.
 - Output close errors are propagated.
+- Reorganize documentation with the Diátaxis framework: tutorials, how-to guides, reference, and explanation.
 - Update Go to 1.26.10, refresh dependencies, and pin goreleaser to v2.12.7.
 
 ### Fixed

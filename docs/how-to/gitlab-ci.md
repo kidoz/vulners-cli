@@ -1,15 +1,15 @@
-# GitLab CI Integration Guide
+# Scan a repository with GitLab CI
 
-This guide provides a deep dive into GitLab CI/CD integration with `vulners-cli`.
+This guide shows how to run `vulners-cli` in GitLab CI/CD and publish findings to the Security Dashboard and merge requests.
 
-## Key Integration Features
+## What you get
 
 `vulners-cli` supports several GitLab-native features:
-1.  **Dependency Scanning:** Using CycloneDX output.
-2.  **Container Scanning:** Using CycloneDX output for images.
-3.  **Merge Request Reports:** Visualizing scan results directly in merge requests.
+1.  **Dependency scanning:** Using CycloneDX output.
+2.  **Container scanning:** Using CycloneDX output for images.
+3.  **Merge request reports:** Visualizing scan results directly in merge requests.
 
-## Full Workflow Example
+## Full workflow example
 
 Create a `.gitlab-ci.yml` in your project root:
 
@@ -24,7 +24,7 @@ variables:
 
 vulners-dependency-scan:
   stage: scan
-  image: golang:1.25-alpine
+  image: golang:1.26-alpine
   before_script:
     - apk add --no-cache git
     - go install github.com/kidoz/vulners-cli/cmd/vulners@latest
@@ -42,7 +42,7 @@ vulners-dependency-scan:
 
 vulners-container-scan:
   stage: scan
-  image: golang:1.25-alpine
+  image: golang:1.26-alpine
   services:
     - docker:dind
   variables:
@@ -59,7 +59,7 @@ vulners-container-scan:
       container_scanning: gl-container-scanning-report.json
 ```
 
-## Security Dashboard Integration
+## Security dashboard integration
 
 By using the `artifacts:reports:dependency_scanning` and `artifacts:reports:container_scanning` keys, GitLab will automatically parse the CycloneDX report and populate:
 
@@ -69,6 +69,14 @@ By using the `artifacts:reports:dependency_scanning` and `artifacts:reports:cont
 
 ## Tips
 
-- **Fail-On Severity:** Use `--fail-on` to stop the pipeline if high-severity vulnerabilities are found.
+- **Fail-on severity:** Use `--fail-on` to stop the pipeline if high-severity vulnerabilities are found.
 - **VEX (Vulnerability Exploitability eXchange):** If you have false positives or accepted risks, use the `--vex` flag with an OpenVEX file to suppress them in the output.
-- **Offline Scanning:** If your runner is air-gapped, use `vulners offline sync` (if the runner has a persistent cache) or provide the database manually.
+- **Offline scanning:** If your runner is air-gapped, use `vulners offline sync` (if the runner has a persistent cache) or provide the database manually.
+
+`scan repo` runs Go reachability analysis in-process, so the Go image must provide a toolchain compatible with the project's `go.mod`.
+
+## Related
+
+- [Scan a repository with GitHub Actions](github-actions.md)
+- [CLI reference](../reference/cli.md)
+- [How vulners-cli scans](../explanation/scanning-model.md)
