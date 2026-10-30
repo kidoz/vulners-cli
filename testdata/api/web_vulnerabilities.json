@@ -1,0 +1,10 @@
+{
+  "/path": [{
+    "id": "CVE-TEST",
+    "type": "cve",
+    "metrics": {
+      "nva": {"cvss31": {"baseScore": 9.8}},
+      "nvd": {"cvss31": {"baseScore": 7.5}}
+    }
+  }]
+}

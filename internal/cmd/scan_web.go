@@ -82,29 +82,44 @@ func (c *ScanWebCmd) findings(results map[string][]vulners.WebVulnerability) []m
 	return findings
 }
 
+// Prefer the newest CVSS generation, taking the highest score across providers.
+// Provider iteration order must not affect policy decisions.
 func webSeverity(metrics map[string]any) (float64, string) {
-	for _, key := range []string{"cvss4", "cvss3", "cvss"} {
-		value, ok := metrics[key]
-		if !ok || value == nil {
-			continue
-		}
-		raw, err := json.Marshal(value)
-		if err != nil {
-			continue
-		}
-		var score float64
-		if json.Unmarshal(raw, &score) != nil {
-			var cvss struct {
-				Score float64 `json:"score"`
+	for _, keys := range [][]string{{"cvss4", "cvss40"}, {"cvss3", "cvss31", "cvss30"}, {"cvss", "cvss2"}} {
+		score := webProviderScore(metrics, keys)
+		for _, value := range metrics {
+			if provider, ok := value.(map[string]any); ok {
+				score = max(score, webProviderScore(provider, keys))
 			}
-			if json.Unmarshal(raw, &cvss) != nil {
-				continue
-			}
-			score = cvss.Score
 		}
 		if score > 0 {
 			return score, model.ScoreSeverity(score)
 		}
 	}
 	return 0, "unknown"
+}
+
+func webProviderScore(metrics map[string]any, keys []string) float64 {
+	var best float64
+	for _, key := range keys {
+		raw, err := json.Marshal(metrics[key])
+		if err != nil {
+			continue
+		}
+		var score float64
+		if json.Unmarshal(raw, &score) != nil {
+			var cvss struct {
+				Score     float64 `json:"score"`
+				BaseScore float64 `json:"baseScore"`
+			}
+			if json.Unmarshal(raw, &cvss) != nil {
+				continue
+			}
+			score = max(cvss.Score, cvss.BaseScore)
+		}
+		if score > 0 && score <= 10 {
+			best = max(best, score)
+		}
+	}
+	return best
 }

@@ -63,7 +63,7 @@ func checkHostOrWebPolicy(t *testing.T, kind, suppression string) {
 			return audit(ctx, osName, version, kbs)
 		},
 		getWebVulnsFn: func(context.Context, []string, any) (map[string][]vulners.WebVulnerability, error) {
-			return map[string][]vulners.WebVulnerability{"/path": {{ID: "CVE-TEST", Metrics: map[string]any{"cvss": 9.8}}}}, nil
+			return webFixture(t), nil
 		},
 	}
 	deps := testDeps(client)
