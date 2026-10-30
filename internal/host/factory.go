@@ -26,14 +26,9 @@ func NewExecutorFromURI(ctx context.Context, target string, opts ExecutorOptions
 		return NewLocalExecutor(), nil
 	}
 
-	u, err := url.Parse(target)
+	u, err := parseTargetURI(target)
 	if err != nil {
-		return nil, fmt.Errorf("invalid target URI")
-	}
-	if u.User != nil {
-		if _, ok := u.User.Password(); ok {
-			return nil, fmt.Errorf("passwords in target URIs are not supported; use --password-env or --ask-pass")
-		}
+		return nil, err
 	}
 
 	switch u.Scheme {
@@ -44,6 +39,36 @@ func NewExecutorFromURI(ctx context.Context, target string, opts ExecutorOptions
 	default:
 		return nil, fmt.Errorf("unsupported target scheme: %s", u.Scheme)
 	}
+}
+
+// ValidateTarget checks syntax and credentials without opening connections or prompting.
+func ValidateTarget(target string) error {
+	if target == "local" {
+		return nil
+	}
+	_, err := parseTargetURI(target)
+	return err
+}
+
+func parseTargetURI(target string) (*url.URL, error) {
+	u, err := url.Parse(target)
+	if err != nil {
+		return nil, fmt.Errorf("invalid target URI")
+	}
+	if u.User != nil {
+		if _, ok := u.User.Password(); ok {
+			return nil, fmt.Errorf("passwords in target URIs are not supported; use --password-env or --ask-pass")
+		}
+	}
+	switch u.Scheme {
+	case "ssh", "winrm", "winrms":
+	default:
+		return nil, fmt.Errorf("unsupported target scheme: %s", u.Scheme)
+	}
+	if u.Hostname() == "" {
+		return nil, fmt.Errorf("target URI requires a host")
+	}
+	return u, nil
 }
 
 func getPassword(u *url.URL, opts ExecutorOptions) (string, error) {
