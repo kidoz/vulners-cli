@@ -120,7 +120,7 @@ func provideDeps(cfg *config.Config, logger *slog.Logger) (*icmd.Deps, error) {
 			return nil, fmt.Errorf("creating VScanner client: %w (check VULNERS_API_KEY)", err)
 		}
 	}
-	return &icmd.Deps{Intel: intelClient, VScanner: vscannerClient}, nil
+	return &icmd.Deps{Intel: intelClient, VScanner: vscannerClient, EnableAIScore: cfg.EnableAIScore}, nil
 }
 
 func provideCache(lc fx.Lifecycle, cfg *config.Config, logger *slog.Logger) cache.Store {

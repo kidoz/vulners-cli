@@ -7,6 +7,7 @@ import (
 
 	vulners "github.com/kidoz/go-vulners"
 	"github.com/kidoz/vulners-cli/internal/cache"
+	"github.com/kidoz/vulners-cli/internal/matcher"
 	"github.com/kidoz/vulners-cli/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,4 +59,23 @@ func TestScanOfflineComponentsFailsOnLookupError(t *testing.T) {
 	}
 	_, err := scanOfflineComponents(context.Background(), store, []model.Component{{Name: "openssl", Version: "1.0"}}, discardLogger())
 	require.Error(t, err)
+}
+
+func TestEnrichmentFailureStillFailsReachableGate(t *testing.T) {
+	client := &mockIntelClient{
+		getMultipleBulletinsFn: func(context.Context, []string) (map[string]vulners.Bulletin, error) {
+			return nil, errors.New("unavailable")
+		},
+		getBulletinFn: func(context.Context, string) (*vulners.Bulletin, error) { return nil, errors.New("unavailable") },
+	}
+	findings := matcher.NewEnricher(client, discardLogger()).Enrich(context.Background(), []model.Finding{{VulnID: "GO-2026-0001", Severity: "unknown", Reachability: "reachable"}})
+	cli := jsonCLI()
+	cli.FailOn = "critical"
+	out := captureStdout(t, func() {
+		err := finalizeScan(cli, ".", nil, findings)
+		var exitErr *model.ExitError
+		require.ErrorAs(t, err, &exitErr)
+		assert.Equal(t, model.ExitFindings, exitErr.Code)
+	})
+	assert.Contains(t, string(out), `"severity": "unknown"`)
 }

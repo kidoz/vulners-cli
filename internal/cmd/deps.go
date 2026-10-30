@@ -6,6 +6,7 @@ import (
 
 // Deps holds shared dependencies injected into commands.
 type Deps struct {
-	Intel    intel.Client
-	VScanner intel.VScannerClient
+	EnableAIScore bool
+	Intel         intel.Client
+	VScanner      intel.VScannerClient
 }

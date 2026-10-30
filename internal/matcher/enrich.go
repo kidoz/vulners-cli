@@ -56,7 +56,11 @@ func (e *Enricher) Enrich(ctx context.Context, findings []model.Finding) []model
 	bulletinMap, err := e.intel.GetMultipleBulletins(ctx, allIDs)
 	if err != nil {
 		e.logger.Debug("batch fetch failed, falling back to individual lookups", "error", err)
-		return e.enrichIndividually(ctx, findings)
+		findings = e.enrichIndividually(ctx, findings)
+		if e.enableAIScore {
+			e.enrichAIScores(ctx, findings)
+		}
+		return findings
 	}
 
 	// Batch responses omit IDs Vulners does not know, such as GO-* advisories.

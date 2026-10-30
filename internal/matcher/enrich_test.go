@@ -2,6 +2,7 @@ package matcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"testing"
@@ -243,5 +244,25 @@ func TestEnrichFinding_WithAI(t *testing.T) {
 	}
 	if *f.AIScore != 9.0 {
 		t.Errorf("expected AIScore 9.0, got %f", *f.AIScore)
+	}
+}
+
+func TestEnricher_AIScoreAfterBatchFailure(t *testing.T) {
+	called := false
+	client := &mockClient{
+		getMultipleFn: func(context.Context, []string) (map[string]vulners.Bulletin, error) {
+			return nil, errors.New("batch unavailable")
+		},
+		getBulletinFn: func(context.Context, string) (*vulners.Bulletin, error) {
+			return &vulners.Bulletin{ID: "CVE-2026-0001"}, nil
+		},
+		getAIScoreFn: func(context.Context, string) (*vulners.AIScore, error) {
+			called = true
+			return &vulners.AIScore{Value: 8}, nil
+		},
+	}
+	findings := NewEnricher(client, slog.Default()).WithAIScore(true).Enrich(context.Background(), []model.Finding{{VulnID: "CVE-2026-0001"}})
+	if !called || findings[0].AIScore == nil || *findings[0].AIScore != 8 {
+		t.Fatal("AI enrichment lost on individual fallback")
 	}
 }

@@ -89,7 +89,7 @@ func scanGoRepoOnline(
 	if err != nil {
 		return nil, fmt.Errorf("running reachability analysis: %w", err)
 	}
-	return matcher.NewEnricher(deps.Intel, logger).Enrich(ctx, findings), nil
+	return matcher.NewEnricher(deps.Intel, logger).WithAIScore(deps.EnableAIScore).Enrich(ctx, findings), nil
 }
 
 // PlanOutput describes what a scan would do without executing it.
