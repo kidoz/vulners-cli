@@ -37,6 +37,7 @@ type ClientOption func(*clientOptions)
 
 type clientOptions struct {
 	maxResponseSize int64
+	timeout         time.Duration
 }
 
 // WithMaxResponseSize raises the maximum HTTP response body size the client
@@ -47,6 +48,11 @@ func WithMaxResponseSize(maxBytes int64) ClientOption {
 	return func(o *clientOptions) {
 		o.maxResponseSize = maxBytes
 	}
+}
+
+// WithTimeout sets the per-request HTTP timeout. Zero keeps the 120s default.
+func WithTimeout(timeout time.Duration) ClientOption {
+	return func(o *clientOptions) { o.timeout = timeout }
 }
 
 // NewVulnersClient creates a new Vulners API client.
@@ -60,8 +66,14 @@ func NewVulnersClient(apiKey string, logger *slog.Logger, opts ...ClientOption) 
 		opt(o)
 	}
 
+	if o.timeout < 0 {
+		return nil, fmt.Errorf("HTTP timeout must not be negative")
+	}
+	if o.timeout == 0 {
+		o.timeout = defaultTimeout
+	}
 	vopts := []vulners.Option{
-		vulners.WithTimeout(defaultTimeout),
+		vulners.WithTimeout(o.timeout),
 		vulners.WithUserAgent("vulners-cli/" + Version),
 	}
 	if o.maxResponseSize > 0 {

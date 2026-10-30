@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/confmap"
@@ -17,13 +18,14 @@ import (
 
 // Config holds the application configuration.
 type Config struct {
-	APIKey          string `koanf:"api_key"` //nolint:gosec
-	DBPath          string `koanf:"db_path"`
-	Verbose         bool   `koanf:"verbose"`
-	Quiet           bool   `koanf:"quiet"`
-	Offline         bool   `koanf:"offline"`
-	EnableAIScore   bool   `koanf:"enable_ai_score"`
-	MaxResponseSize int64  `koanf:"max_response_size"`
+	APIKey          string        `koanf:"api_key"` //nolint:gosec
+	DBPath          string        `koanf:"db_path"`
+	Verbose         bool          `koanf:"verbose"`
+	Quiet           bool          `koanf:"quiet"`
+	Offline         bool          `koanf:"offline"`
+	EnableAIScore   bool          `koanf:"enable_ai_score"`
+	MaxResponseSize int64         `koanf:"max_response_size"`
+	HTTPTimeout     time.Duration `koanf:"http_timeout"`
 }
 
 // Load reads configuration from defaults, config file, and environment variables.
@@ -61,28 +63,7 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	if err := k.Load(env.ProviderWithValue("VULNERS_", ".", func(key, value string) (string, interface{}) {
-		if value == "" {
-			return "", nil // skip empty env vars so they don't override file/defaults
-		}
-		switch key {
-		case "VULNERS_API_KEY":
-			return "api_key", value
-		case "VULNERS_DB_PATH":
-			return "db_path", value
-		case "VULNERS_MAX_RESPONSE_SIZE":
-			// Parsed to int64 so Koanf doesn't coerce strings. Pre-validated
-			// below; a non-positive value means "use the go-vulners default".
-			n, _ := strconv.ParseInt(value, 10, 64)
-			return "max_response_size", n
-		case "VULNERS_VERBOSE", "VULNERS_QUIET", "VULNERS_OFFLINE", "VULNERS_ENABLE_AI_SCORE":
-			// Pre-validated above; parse to bool so Koanf doesn't coerce strings.
-			b, _ := strconv.ParseBool(value)
-			return envKeyToKoanf(key), b
-		default:
-			return "", nil
-		}
-	}), nil); err != nil {
+	if err := k.Load(env.ProviderWithValue("VULNERS_", ".", envConfigValue), nil); err != nil {
 		return nil, err
 	}
 
@@ -91,6 +72,9 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	if cfg.HTTPTimeout < 0 {
+		return nil, fmt.Errorf("http_timeout must not be negative")
+	}
 	return &cfg, nil
 }
 
@@ -113,6 +97,12 @@ func validateEnvVars() error {
 	if v, ok := os.LookupEnv("VULNERS_MAX_RESPONSE_SIZE"); ok && v != "" {
 		if _, err := strconv.ParseInt(v, 10, 64); err != nil {
 			return fmt.Errorf("env VULNERS_MAX_RESPONSE_SIZE=%q must be an integer number of bytes", v)
+		}
+	}
+	if v := os.Getenv("VULNERS_HTTP_TIMEOUT"); v != "" {
+		duration, err := time.ParseDuration(v)
+		if err != nil || duration < 0 {
+			return fmt.Errorf("env VULNERS_HTTP_TIMEOUT must be a non-negative duration (e.g. 10m)")
 		}
 	}
 	return nil
@@ -154,4 +144,29 @@ func defaultDBPath() string {
 		return ""
 	}
 	return filepath.Join(home, ".vulners", "vulners.db")
+}
+
+func envConfigValue(key, value string) (string, interface{}) {
+	if value == "" {
+		return "", nil // skip empty env vars so they don't override file/defaults
+	}
+	switch key {
+	case "VULNERS_API_KEY":
+		return "api_key", value
+	case "VULNERS_DB_PATH":
+		return "db_path", value
+	case "VULNERS_HTTP_TIMEOUT":
+		return "http_timeout", value
+	case "VULNERS_MAX_RESPONSE_SIZE":
+		// Validated before env loading; parse to int64 to avoid coercion.
+		// A non-positive value means "use the go-vulners default".
+		n, _ := strconv.ParseInt(value, 10, 64)
+		return "max_response_size", n
+	case "VULNERS_VERBOSE", "VULNERS_QUIET", "VULNERS_OFFLINE", "VULNERS_ENABLE_AI_SCORE":
+		// Pre-validated above; parse to bool so Koanf doesn't coerce strings.
+		b, _ := strconv.ParseBool(value)
+		return envKeyToKoanf(key), b
+	default:
+		return "", nil
+	}
 }

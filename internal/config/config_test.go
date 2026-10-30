@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -164,4 +165,37 @@ func TestDefaultDBPath_NoHome(t *testing.T) {
 	t.Setenv("HOME", "")
 	t.Setenv("USERPROFILE", "")
 	assert.Empty(t, defaultDBPath(), "missing home must not select a predictable shared temporary file")
+}
+
+func TestLoad_HTTPTimeout(t *testing.T) {
+	for _, tc := range []struct {
+		name, yaml, env string
+		want            time.Duration
+		wantErr         bool
+	}{
+		{name: "default"},
+		{name: "yaml", yaml: "10m", want: 10 * time.Minute},
+		{name: "env override", yaml: "10m", env: "5m", want: 5 * time.Minute},
+		{name: "zero keeps default", env: "0s"},
+		{name: "invalid env", env: "ten minutes", wantErr: true},
+		{name: "negative env", env: "-1s", wantErr: true},
+		{name: "invalid yaml", yaml: "slow", wantErr: true},
+		{name: "negative yaml", yaml: "-1s", wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "config.yaml")
+			if tc.yaml != "" {
+				require.NoError(t, os.WriteFile(path, []byte("http_timeout: "+tc.yaml+"\n"), 0o600))
+			}
+			t.Setenv("VULNERS_CONFIG", path)
+			t.Setenv("VULNERS_HTTP_TIMEOUT", tc.env)
+			cfg, err := Load()
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, cfg.HTTPTimeout)
+		})
+	}
 }
