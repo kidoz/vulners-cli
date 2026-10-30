@@ -65,6 +65,9 @@ JSON is the default and is deterministic. `--agent` forces JSON, quiet logging, 
 - API keys can come from the environment or a config file. On Unix, config files must not be group- or world-readable.
 - Host target URIs reject embedded passwords; use `--password-env` or `--ask-pass`. Password prompts are written to stderr, never stdout.
 - SBOM, npm lockfile, and OpenVEX inputs are limited to 64 MiB.
+- Host commands and govulncheck capture at most 64 MiB of stdout and 1 MiB of stderr per command; overflow cancels the command and fails the scan.
+- WinRM requires a username and warns on stderr when HTTP is selected; use `winrms://` for TLS.
+- Report files, the cache database, and SQLite sidecars use mode `0600` on Unix. SQLite copies the database mode when creating or recreating WAL/SHM sidecars, even in a custom cache directory. The dedicated `.vulners` directory uses `0750`. If the home directory is unavailable, configure `VULNERS_DB_PATH` explicitly to enable the cache.
 - Report writers sanitize terminal control characters so hostile bulletin data cannot inject escape sequences.
 - Offline reads fail closed, and write failures are reported rather than treated as success.
 
