@@ -87,22 +87,14 @@ func (c *ScanImageCmd) scanImageOnline(
 		pkgs := formatOSPackages(osComps)
 		auditResult, err := deps.Intel.LinuxAudit(ctx, result.Distro.Name, result.Distro.Version, pkgs)
 		if err != nil {
-			logger.Warn("LinuxAudit failed, falling back to SBOMAudit for all packages", "error", err)
-			// Fall through to SBOMAudit for everything.
-			osComps = nil
-			appComps = result.Components
-		} else {
-			auditMode = "hybrid"
-			findings = append(findings, convertAuditFindings(auditResult)...)
+			return nil, "", fmt.Errorf("LinuxAudit for OS packages: %w", err)
 		}
+		auditMode = "hybrid"
+		findings = append(findings, convertAuditFindings(auditResult)...)
 	} else {
-		// No distro or no OS packages: treat everything as app packages.
 		appComps = result.Components
 	}
 
-	// Send the full SBOM to SBOMAudit for application packages.
-	// The SBOMAudit API handles all package types; the LinuxAudit findings above
-	// give us more accurate results for OS packages specifically.
 	if len(appComps) > 0 || len(osComps) == 0 {
 		sbomReader := bytes.NewReader(result.RawSBOM)
 		sbomResult, err := deps.Intel.SBOMAudit(ctx, sbomReader)
@@ -111,8 +103,7 @@ func (c *ScanImageCmd) scanImageOnline(
 		}
 		sbomFindings := convertSBOMFindings(sbomResult.Packages)
 
-		if len(findings) > 0 {
-			// Merge: only add SBOMAudit findings for non-OS packages to avoid duplicates.
+		if auditMode == "hybrid" {
 			osCompSet := make(map[string]bool, len(osComps))
 			for _, c := range osComps {
 				osCompSet[c.Name+"@"+c.Version] = true

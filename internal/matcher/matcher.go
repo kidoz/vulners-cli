@@ -28,7 +28,6 @@ func NewMatcher(intelClient intel.Client, logger *slog.Logger) *Matcher {
 // Match queries the Vulners API for vulnerabilities affecting the given components.
 func (m *Matcher) Match(ctx context.Context, components []model.Component) ([]model.Finding, error) {
 	var findings []model.Finding
-	var skipped int
 
 	for _, comp := range components {
 		comp = NormalizeComponent(comp)
@@ -41,30 +40,15 @@ func (m *Matcher) Match(ctx context.Context, components []model.Component) ([]mo
 
 		result, err := m.intel.Search(ctx, query, searchLimit, 0)
 		if err != nil {
-			// Propagate context errors — they signal the caller cancelled or timed out.
 			if ctx.Err() != nil {
 				return nil, fmt.Errorf("search aborted: %w", ctx.Err())
 			}
-			m.logger.Warn("search failed for component", "name", comp.Name, "error", err)
-			skipped++
-			continue
+			return nil, fmt.Errorf("searching %s@%s: %w", comp.Name, comp.Version, err)
 		}
 
 		for _, b := range result.Bulletins {
 			findings = append(findings, BulletinToFinding(&b, comp.Name+"@"+comp.Version))
 		}
-	}
-
-	if skipped > 0 {
-		m.logger.Warn("components skipped due to search errors",
-			"skipped", skipped, "total", len(components))
-	}
-
-	// If every component lookup failed, surface an error instead of
-	// silently returning zero findings (false negative).
-	queried := len(components) - skipped
-	if queried == 0 && len(components) > 0 {
-		return nil, fmt.Errorf("all %d component lookups failed; results would be empty", len(components))
 	}
 
 	return findings, nil

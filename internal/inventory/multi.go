@@ -4,7 +4,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
-	"log/slog"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -38,10 +38,10 @@ func (c *MultiCollector) Collect(ctx context.Context, dir string) ([]model.Compo
 		target := filepath.Join(dir, filename)
 		components, err := collector.Collect(ctx, target)
 		if err != nil {
-			if !errors.Is(err, os.ErrNotExist) {
-				slog.Warn("failed to collect from manifest", "file", target, "error", err)
+			if errors.Is(err, os.ErrNotExist) {
+				continue
 			}
-			continue
+			return nil, fmt.Errorf("collecting manifest %s: %w", target, err)
 		}
 		all = append(all, components...)
 	}

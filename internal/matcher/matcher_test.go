@@ -1,7 +1,6 @@
 package matcher
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -244,7 +243,7 @@ func TestMatcher_Match_WithResults(t *testing.T) {
 	}
 }
 
-func TestMatcher_Match_SearchError_AllFail(t *testing.T) {
+func TestMatcher_Match_SearchError(t *testing.T) {
 	client := &mockClient{
 		searchFn: func(context.Context, string, int, int) (*intel.SearchResult, error) {
 			return nil, fmt.Errorf("api error")
@@ -252,42 +251,37 @@ func TestMatcher_Match_SearchError_AllFail(t *testing.T) {
 	}
 
 	m := NewMatcher(client, slog.Default())
-	_, err := m.Match(context.Background(), []model.Component{
-		{Name: "pkg", Version: "1.0"},
-	})
+	findings, err := m.Match(context.Background(), []model.Component{{Name: "pkg", Version: "1.0"}})
 	if err == nil {
-		t.Fatal("Match() should return error when all lookups fail")
+		t.Fatal("Match() should return an error when a lookup fails")
 	}
-	if !strings.Contains(err.Error(), "all 1 component lookups failed") {
+	if len(findings) != 0 {
+		t.Fatalf("Match() returned partial findings: %d", len(findings))
+	}
+	if !strings.Contains(err.Error(), "searching pkg@1.0: api error") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
 
-func TestMatcher_Match_SearchError_PartialFail(t *testing.T) {
+func TestMatcher_Match_SearchErrorStopsImmediately(t *testing.T) {
 	callCount := 0
 	client := &mockClient{
 		searchFn: func(_ context.Context, _ string, _, _ int) (*intel.SearchResult, error) {
 			callCount++
-			if callCount == 1 {
-				return nil, fmt.Errorf("api error")
-			}
-			return &intel.SearchResult{
-				Total:     1,
-				Bulletins: []vulners.Bulletin{{ID: "CVE-2023-0001", CVSS: &vulners.CVSS{Score: 5.0}}},
-			}, nil
+			return nil, fmt.Errorf("api error")
 		},
 	}
 
 	m := NewMatcher(client, slog.Default())
-	findings, err := m.Match(context.Background(), []model.Component{
+	_, err := m.Match(context.Background(), []model.Component{
 		{Name: "pkg1", Version: "1.0"},
 		{Name: "pkg2", Version: "2.0"},
 	})
-	if err != nil {
-		t.Fatalf("Match() should not error when some lookups succeed: %v", err)
+	if err == nil {
+		t.Fatal("Match() should fail instead of returning partial results")
 	}
-	if len(findings) != 1 {
-		t.Errorf("expected 1 finding from partial success, got %d", len(findings))
+	if callCount != 1 {
+		t.Fatalf("Search() called %d times, want 1", callCount)
 	}
 }
 
@@ -303,40 +297,6 @@ func TestMatcher_Match_EmptyComponent(t *testing.T) {
 	}
 	if len(findings) != 0 {
 		t.Errorf("expected 0 findings for empty component, got %d", len(findings))
-	}
-}
-
-func TestMatcher_Match_SkipCount(t *testing.T) {
-	callCount := 0
-	client := &mockClient{
-		searchFn: func(context.Context, string, int, int) (*intel.SearchResult, error) {
-			callCount++
-			return nil, fmt.Errorf("api error %d", callCount)
-		},
-	}
-
-	var buf bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	m := NewMatcher(client, logger)
-
-	components := []model.Component{
-		{Name: "pkg1", Version: "1.0"},
-		{Name: "pkg2", Version: "2.0"},
-		{Name: "pkg3", Version: "3.0"},
-	}
-
-	_, err := m.Match(context.Background(), components)
-	// All 3 failed → error expected.
-	if err == nil {
-		t.Fatal("Match() should return error when all lookups fail")
-	}
-
-	logOutput := buf.String()
-	if !strings.Contains(logOutput, "skipped") {
-		t.Errorf("expected skip count warning in logs, got: %s", logOutput)
-	}
-	if !strings.Contains(logOutput, "3") {
-		t.Errorf("expected skip count of 3 in logs, got: %s", logOutput)
 	}
 }
 

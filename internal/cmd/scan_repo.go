@@ -243,14 +243,12 @@ func finalizeScan(globals *CLI, target string, components []model.Component, fin
 	return nil
 }
 
-func writeOutput(globals *CLI, target string, components []model.Component, findings []model.Finding, imageMeta *ImageMeta) error {
+func writeOutput(globals *CLI, target string, components []model.Component, findings []model.Finding, imageMeta *ImageMeta) (retErr error) {
 	if globals.Agent {
 		sortFindings(findings)
 	}
 
-	// Summarize the full set before any truncation.
 	summary := summarize(components, findings)
-
 	output := ScanOutput{
 		SchemaVersion: "1.0.0",
 		Target:        target,
@@ -260,7 +258,6 @@ func writeOutput(globals *CLI, target string, components []model.Component, find
 		ImageMeta:     imageMeta,
 	}
 
-	// --summary-only: keep summary + top 5 findings, drop full lists.
 	if globals.SummaryOnly {
 		output.Components = []model.Component{}
 		output.Findings = []model.Finding{}
@@ -270,7 +267,6 @@ func writeOutput(globals *CLI, target string, components []model.Component, find
 		}
 	}
 
-	// Truncate findings if --max-findings is set (skipped when summary-only).
 	if !globals.SummaryOnly && globals.MaxFindings > 0 && len(findings) > globals.MaxFindings {
 		output.Truncated = true
 		output.TotalFindings = len(findings)
@@ -281,10 +277,13 @@ func writeOutput(globals *CLI, target string, components []model.Component, find
 	if err != nil {
 		return err
 	}
-	defer func() { _ = closer() }()
+	defer func() {
+		if closeErr := closer(); retErr == nil && closeErr != nil {
+			retErr = fmt.Errorf("closing output: %w", closeErr)
+		}
+	}()
 
 	reporter := report.New(model.OutputFormat(globals.Output))
-
 	var out any = output
 	if model.OutputFormat(globals.Output) == model.OutputJSON && len(globals.Fields) > 0 {
 		projected, ferr := projectFields(output, globals.Fields)

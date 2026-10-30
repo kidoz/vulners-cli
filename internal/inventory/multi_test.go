@@ -144,3 +144,29 @@ func TestMultiCollector_Collect_EmptyDir(t *testing.T) {
 		t.Errorf("expected 0 components for empty dir, got %d", len(components))
 	}
 }
+
+func TestMultiCollector_Collect_MalformedManifestFails(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "package-lock.json"), []byte("{not-json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := (&MultiCollector{}).Collect(context.Background(), dir)
+	if err == nil {
+		t.Fatal("Collect() should fail for a malformed manifest")
+	}
+}
+
+func TestMultiCollector_Collect_GoMod(t *testing.T) {
+	dir := t.TempDir()
+	content := "module example.com/app\n\nrequire example.com/dependency v1.2.3\n"
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	components, err := (&MultiCollector{}).Collect(context.Background(), dir)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+	if len(components) != 1 || components[0].Name != "example.com/dependency" {
+		t.Fatalf("unexpected components: %+v", components)
+	}
+}
