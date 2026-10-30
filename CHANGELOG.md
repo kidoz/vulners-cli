@@ -17,13 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Usage and configuration errors now exit with code 2; runtime errors remain code 3.
-- Missing API keys, invalid `--fail-on` values, and unsupported output formats are usage errors.
+- Missing API keys, unsupported output formats, and invalid `--fail-on` values are usage errors on every command.
+- `--fail-on` ignores govulncheck findings that are imported but not reachable.
 - Scanner and inventory failures now abort scans instead of being skipped: component search errors, malformed manifests, image `LinuxAudit` failures, and non-zero `govulncheck` exits.
 - Output close errors are propagated.
 - Update Go to 1.26.10, refresh dependencies, and pin goreleaser to v2.12.7.
 
 ### Fixed
 
+- Populate govulncheck fixed versions from the `fixed_version` field.
+- Attach CVE aliases from govulncheck OSV metadata so reachability findings are enriched with severity.
+- Merge duplicate govulncheck findings for the same advisory and module.
+- Prefer populated CVSS data when the API returns an empty `cvss3` object alongside `cvss`.
 - Offline scans fail on lookup errors instead of returning empty results.
 - Markdown tables escape backslashes, newlines, and control characters.
 
