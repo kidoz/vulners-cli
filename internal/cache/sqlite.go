@@ -13,6 +13,7 @@ import (
 	"time"
 
 	vulners "github.com/kidoz/go-vulners"
+	"github.com/kidoz/vulners-cli/internal/affected"
 	_ "modernc.org/sqlite"
 )
 
@@ -230,27 +231,15 @@ func (s *SQLiteStore) MatchBulletins(ctx context.Context, name, version, cpe str
 		if err := json.Unmarshal([]byte(data), &b); err != nil {
 			return nil, fmt.Errorf("decoding cached bulletin %s: %w", id, err)
 		}
-		if bulletinMatches(&b, name, version, cpe) {
+		matches, matchErr := affected.Matches(&b, name, version, cpe)
+		if matchErr != nil {
+			return nil, matchErr
+		}
+		if matches {
 			results = append(results, b)
 		}
 	}
 	return results, rows.Err()
-}
-
-func bulletinMatches(b *vulners.Bulletin, name, version, cpe string) bool {
-	for _, affected := range b.AffectedSoftware {
-		if cpe != "" && affected.CPE == cpe {
-			return true
-		}
-		if name == "" || !strings.EqualFold(strings.TrimSpace(affected.Name), name) {
-			continue
-		}
-		affectedVersion := strings.TrimSpace(affected.Version)
-		if affectedVersion == "" || affectedVersion == "*" || affectedVersion == version {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *SQLiteStore) GetCollectionMeta(ctx context.Context) ([]CollectionMeta, error) {

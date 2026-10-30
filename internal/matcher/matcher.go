@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
 
+	"github.com/kidoz/vulners-cli/internal/affected"
 	"github.com/kidoz/vulners-cli/internal/intel"
 	"github.com/kidoz/vulners-cli/internal/model"
 )
 
-// searchLimit is the maximum number of bulletins to fetch per component.
-// High enough to avoid missing vulns for popular packages (e.g. OpenSSL).
+// searchLimit is the page size for product-scoped bulletin searches.
 const searchLimit = 100
 
 // Matcher resolves components to vulnerability findings.
@@ -38,45 +37,55 @@ func (m *Matcher) Match(ctx context.Context, components []model.Component) ([]mo
 
 		m.logger.Debug("querying vulners", "component", comp.Name, "version", comp.Version)
 
-		result, err := m.intel.Search(ctx, query, searchLimit, 0)
+		matched, err := m.matchComponent(ctx, comp, query)
+		if err != nil {
+			return nil, err
+		}
+		findings = append(findings, matched...)
+	}
+
+	return findings, nil
+}
+
+// matchComponent pages through product-scoped candidates; range boundaries can
+// differ from the installed version, so the query must not filter by that version.
+func (m *Matcher) matchComponent(ctx context.Context, comp model.Component, query string) ([]model.Finding, error) {
+	var findings []model.Finding
+	for offset := 0; ; {
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("search aborted: %w", err)
+		}
+		result, err := m.intel.Search(ctx, query, searchLimit, offset)
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil, fmt.Errorf("search aborted: %w", ctx.Err())
 			}
 			return nil, fmt.Errorf("searching %s@%s: %w", comp.Name, comp.Version, err)
 		}
-
 		for _, b := range result.Bulletins {
-			findings = append(findings, BulletinToFinding(&b, comp.Name+"@"+comp.Version))
+			matches, matchErr := affected.Matches(&b, comp.Name, comp.Version, comp.CPE)
+			if matchErr != nil {
+				return nil, matchErr
+			}
+			if matches {
+				findings = append(findings, BulletinToFinding(&b, comp.Name+"@"+comp.Version))
+			}
+		}
+		count := len(result.Bulletins)
+		offset += count
+		if count == 0 || (result.Total > 0 && offset >= result.Total) || (result.Total == 0 && count < searchLimit) {
+			break
 		}
 	}
-
 	return findings, nil
 }
-
-// querySpecialChars are characters that have meaning in Vulners query syntax.
-var querySpecialChars = strings.NewReplacer(
-	`\`, `\\`,
-	`"`, `\"`,
-	`:`, `\:`,
-	`(`, `\(`,
-	`)`, `\)`,
-	`[`, `\[`,
-	`]`, `\]`,
-)
 
 func buildQuery(comp model.Component) string {
 	if comp.CPE != "" {
 		return fmt.Sprintf("affectedSoftware.cpe:%q", comp.CPE)
 	}
 	if comp.Name != "" && comp.Version != "" {
-		// Quoted field values: characters inside double quotes are literal in
-		// Lucene-like query parsers, so use raw values. Unquoted fallback
-		// needs escaping for special chars.
-		escaped := querySpecialChars.Replace(comp.Name)
-		escapedVer := querySpecialChars.Replace(comp.Version)
-		return fmt.Sprintf("affectedSoftware.name:%q AND affectedSoftware.version:%q OR %s %s",
-			comp.Name, comp.Version, escaped, escapedVer)
+		return fmt.Sprintf("affectedSoftware.name:%q", comp.Name)
 	}
 	return ""
 }

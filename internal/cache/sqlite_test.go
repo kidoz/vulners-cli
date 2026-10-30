@@ -181,3 +181,42 @@ func TestSQLiteStore_ReplaceCollectionRemovesStaleBulletins(t *testing.T) {
 	require.Len(t, metas, 1)
 	assert.Equal(t, 1, metas[0].Count)
 }
+
+func TestSQLiteStore_EmptyAffectedVersionDoesNotMatch(t *testing.T) {
+	store := testStore(t)
+	ctx := context.Background()
+	require.NoError(t, store.PutBulletins(ctx, "test", []vulners.Bulletin{{ID: "unknown", AffectedSoftware: []vulners.AffectedSoftware{{Name: "pkg"}}}}))
+	results, err := store.MatchBulletins(ctx, "pkg", "1.0", "")
+	require.NoError(t, err)
+	assert.Empty(t, results)
+}
+
+func TestSQLiteStore_MatchesVersionRanges(t *testing.T) {
+	store := testStore(t)
+	ctx := context.Background()
+	require.NoError(t, store.PutBulletins(ctx, "test", []vulners.Bulletin{
+		{ID: "LOWER", AffectedSoftware: []vulners.AffectedSoftware{{Name: "pkg", Version: "1.0", Operator: "le"}}},
+		{ID: "HIGHER", AffectedSoftware: []vulners.AffectedSoftware{{Name: "pkg", Version: "1.0", Operator: "ge"}}},
+	}))
+	for _, tc := range []struct {
+		version string
+		ids     []string
+	}{{"0.9", []string{"LOWER"}}, {"1.0", []string{"HIGHER", "LOWER"}}, {"1.1", []string{"HIGHER"}}} {
+		results, err := store.MatchBulletins(ctx, "pkg", tc.version, "")
+		require.NoError(t, err)
+		var ids []string
+		for _, b := range results {
+			ids = append(ids, b.ID)
+		}
+		assert.Equal(t, tc.ids, ids)
+	}
+}
+
+func TestSQLiteStore_UnsupportedRangeFailsLookup(t *testing.T) {
+	store := testStore(t)
+	ctx := context.Background()
+	require.NoError(t, store.PutBulletins(ctx, "test", []vulners.Bulletin{{ID: "INVALID", AffectedSoftware: []vulners.AffectedSoftware{{Name: "pkg", Version: "release-final", Operator: "le"}}}}))
+	results, err := store.MatchBulletins(ctx, "pkg", "1.0", "")
+	require.Error(t, err)
+	assert.Empty(t, results)
+}

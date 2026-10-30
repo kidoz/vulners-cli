@@ -6,6 +6,7 @@ require (
 	github.com/CycloneDX/cyclonedx-go v0.11.0
 	github.com/alecthomas/kong v1.16.0
 	github.com/anchore/syft v1.48.0
+	github.com/hashicorp/go-version v1.8.0
 	github.com/invopop/jsonschema v0.14.0
 	github.com/kidoz/go-vulners v1.3.4
 	github.com/knadh/koanf/parsers/yaml v1.1.0
@@ -175,7 +176,6 @@ require (
 	github.com/hashicorp/go-getter v1.8.6 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
-	github.com/hashicorp/go-version v1.8.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hashicorp/hcl/v2 v2.24.0 // indirect
 	github.com/henvic/httpretty v0.1.4 // indirect

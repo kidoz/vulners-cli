@@ -207,11 +207,12 @@ func TestMatcher_Match_WithResults(t *testing.T) {
 				Total: 1,
 				Bulletins: []vulners.Bulletin{
 					{
-						ID:      "CVE-2021-44228",
-						CVEList: []string{"CVE-2021-44228"},
-						CVSS:    &vulners.CVSS{Score: 10.0},
-						Type:    "cve",
-						Href:    "https://vulners.com/cve/CVE-2021-44228",
+						ID:               "CVE-2021-44228",
+						AffectedSoftware: []vulners.AffectedSoftware{{Name: "log4j", Version: "2.14.0"}},
+						CVEList:          []string{"CVE-2021-44228"},
+						CVSS:             &vulners.CVSS{Score: 10.0},
+						Type:             "cve",
+						Href:             "https://vulners.com/cve/CVE-2021-44228",
 					},
 				},
 			}, nil
@@ -314,7 +315,7 @@ func TestBuildQuery(t *testing.T) {
 		{
 			name: "with name and version",
 			comp: model.Component{Name: "log4j", Version: "2.14.0"},
-			want: `affectedSoftware.name:"log4j" AND affectedSoftware.version:"2.14.0" OR log4j 2.14.0`,
+			want: `affectedSoftware.name:"log4j"`,
 		},
 		{
 			name: "empty",
@@ -329,7 +330,7 @@ func TestBuildQuery(t *testing.T) {
 		{
 			name: "special chars in name",
 			comp: model.Component{Name: "foo:bar(baz)", Version: "1.0"},
-			want: `affectedSoftware.name:"foo:bar(baz)" AND affectedSoftware.version:"1.0" OR foo\:bar\(baz\) 1.0`,
+			want: `affectedSoftware.name:"foo:bar(baz)"`,
 		},
 	}
 	for _, tt := range tests {
@@ -339,5 +340,71 @@ func TestBuildQuery(t *testing.T) {
 				t.Errorf("buildQuery() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestMatcher_RejectsUnrelatedSearchHits(t *testing.T) {
+	client := &mockClient{searchFn: func(context.Context, string, int, int) (*intel.SearchResult, error) {
+		return &intel.SearchResult{Bulletins: []vulners.Bulletin{
+			{ID: "other-product", AffectedSoftware: []vulners.AffectedSoftware{{Name: "other", Version: "1.0"}}},
+			{ID: "other-version", AffectedSoftware: []vulners.AffectedSoftware{{Name: "pkg", Version: "2.0"}}},
+			{ID: "missing-version", AffectedSoftware: []vulners.AffectedSoftware{{Name: "pkg"}}},
+			{ID: "no-metadata"},
+		}}, nil
+	}}
+	findings, err := NewMatcher(client, slog.Default()).Match(context.Background(), []model.Component{{Name: "pkg", Version: "1.0"}})
+	if err != nil || len(findings) != 0 {
+		t.Fatalf("got %v, %v; want no findings", findings, err)
+	}
+}
+
+func TestBuildQuery_UntrustedBooleanWords(t *testing.T) {
+	got := buildQuery(model.Component{Name: "x OR type:exploit", Version: "1.0"})
+	want := `affectedSoftware.name:"x OR type:exploit"`
+	if got != want {
+		t.Fatalf("query = %q, want %q", got, want)
+	}
+}
+
+func TestMatcher_RangeOnLaterSearchPage(t *testing.T) {
+	calls := 0
+	client := &mockClient{searchFn: func(_ context.Context, query string, limit, offset int) (*intel.SearchResult, error) {
+		calls++
+		if query != `affectedSoftware.name:"pkg"` || limit != 100 {
+			t.Fatalf("unexpected query or page size: %q, %d", query, limit)
+		}
+		if offset == 0 {
+			bulletins := make([]vulners.Bulletin, 100)
+			for i := range bulletins {
+				bulletins[i] = vulners.Bulletin{ID: fmt.Sprint(i), AffectedSoftware: []vulners.AffectedSoftware{{Name: "pkg", Version: "9.0"}}}
+			}
+			return &intel.SearchResult{Total: 101, Bulletins: bulletins}, nil
+		}
+		if offset != 100 {
+			t.Fatalf("unexpected offset %d", offset)
+		}
+		return &intel.SearchResult{Total: 101, Bulletins: []vulners.Bulletin{{ID: "RANGE", AffectedSoftware: []vulners.AffectedSoftware{{Name: "pkg", Version: "2.0", Operator: "le"}}}}}, nil
+	}}
+	findings, err := NewMatcher(client, slog.Default()).Match(context.Background(), []model.Component{{Name: "pkg", Version: "1.10"}})
+	if err != nil || len(findings) != 1 || findings[0].VulnID != "RANGE" || calls != 2 {
+		t.Fatalf("range scan: %v, %v, calls=%d", findings, err, calls)
+	}
+}
+
+func TestMatcher_RangeOrPaginationFailureReturnsNoPartialFindings(t *testing.T) {
+	for _, failLookup := range []bool{false, true} {
+		client := &mockClient{searchFn: func(_ context.Context, _ string, _, offset int) (*intel.SearchResult, error) {
+			if offset == 0 {
+				return &intel.SearchResult{Total: 2, Bulletins: []vulners.Bulletin{{ID: "FIRST", AffectedSoftware: []vulners.AffectedSoftware{{Name: "pkg", Version: "1.0"}}}}}, nil
+			}
+			if failLookup {
+				return nil, fmt.Errorf("lookup failed")
+			}
+			return &intel.SearchResult{Total: 2, Bulletins: []vulners.Bulletin{{ID: "INVALID", AffectedSoftware: []vulners.AffectedSoftware{{Name: "pkg", Version: "release-final", Operator: "le"}}}}}, nil
+		}}
+		findings, err := NewMatcher(client, slog.Default()).Match(context.Background(), []model.Component{{Name: "pkg", Version: "1.0"}})
+		if err == nil || len(findings) != 0 {
+			t.Fatalf("partial scan must fail: %v, %v", findings, err)
+		}
 	}
 }
