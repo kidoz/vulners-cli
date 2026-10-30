@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/kidoz/vulners-cli/internal/model"
@@ -27,7 +26,7 @@ func (c *SBOMCollector) Collect(_ context.Context, target string) ([]model.Compo
 }
 
 func parseCycloneDX(path string) ([]model.Component, error) {
-	data, err := os.ReadFile(path)
+	data, err := readFileLimited(path)
 	if err != nil {
 		return nil, fmt.Errorf("opening SBOM: %w", err)
 	}
@@ -39,7 +38,7 @@ func parseCycloneDX(path string) ([]model.Component, error) {
 }
 
 func parseSPDX(path string) ([]model.Component, error) {
-	data, err := os.ReadFile(path)
+	data, err := readFileLimited(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading SPDX SBOM: %w", err)
 	}

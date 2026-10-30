@@ -197,6 +197,9 @@ func registerSBOMAuditTool(server *mcp.Server, deps *Deps) {
 		if strings.TrimSpace(args.SBOM) == "" {
 			return mcpError("sbom argument is required"), nil, nil
 		}
+		if len(args.SBOM) > 64<<20 {
+			return mcpError("sbom argument exceeds 67108864 bytes"), nil, nil
+		}
 		result, err := deps.Intel.SBOMAudit(ctx, strings.NewReader(args.SBOM))
 		if err != nil {
 			return mcpError(fmt.Sprintf("SBOM audit failed: %v", err)), nil, nil

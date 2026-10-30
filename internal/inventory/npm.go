@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
@@ -15,7 +14,7 @@ import (
 type NPMCollector struct{}
 
 func (c *NPMCollector) Collect(_ context.Context, target string) ([]model.Component, error) {
-	data, err := os.ReadFile(target)
+	data, err := readFileLimited(target)
 	if err != nil {
 		return nil, fmt.Errorf("reading package-lock.json: %w", err)
 	}
