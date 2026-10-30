@@ -1,0 +1,14 @@
+{
+  "lockfileVersion": 1,
+  "dependencies": {
+    "direct": {
+      "version": "1.0.0",
+      "dependencies": {
+        "shared": {"version": "2.0.0", "dependencies": {"deep": {"version": "3.0.0"}}},
+        "@scope/nested": {"version": "4.0.0"}
+      }
+    },
+    "other": {"version": "5.0.0", "dependencies": {"shared": {"version": "2.0.0"}, "deep": {"version": "3.1.0"}}},
+    "versionless": {"dependencies": {"leaf": {"version": "6.0.0"}}}
+  }
+}

@@ -19,6 +19,8 @@ Keeping these stages separate is why `--fail-on` and `--ignore` work the same wa
 
 `scan dir` collects components from local manifests and asks the Vulners search API using quoted, field-scoped product names. It pages through candidate bulletins and checks affected versions locally, so range boundaries need not equal the installed version. Returned bulletins must also match explicit affected-product metadata. This is broad package matching: it answers "does this version have known vulnerabilities?", not "can this code reach the vulnerable function?".
 
+Npm lockfile v1 collection walks nested dependencies at every level and deduplicates package name/version pairs. Different versions of the same package remain separate components.
+
 `scan sbom` sends the SBOM to the `SBOMAudit` API, which returns findings with CVSS, EPSS, AI score, and exploit metadata.
 
 ### Go repository scans

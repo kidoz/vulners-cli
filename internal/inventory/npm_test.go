@@ -56,3 +56,14 @@ func TestNPMCollector_Collect(t *testing.T) {
 	// Nested dep: node_modules/express/node_modules/qs → name "qs"
 	assert.Equal(t, "6.11.0", names["qs"])
 }
+
+func TestNPMCollector_V1NestedDependencies(t *testing.T) {
+	components, err := (&NPMCollector{}).Collect(context.Background(), "../../testdata/package-lock-v1.json")
+	require.NoError(t, err)
+	require.Len(t, components, 7)
+	var identities []string
+	for _, comp := range components {
+		identities = append(identities, comp.Name+"@"+comp.Version)
+	}
+	assert.Equal(t, []string{"@scope/nested@4.0.0", "deep@3.0.0", "deep@3.1.0", "direct@1.0.0", "leaf@6.0.0", "other@5.0.0", "shared@2.0.0"}, identities)
+}
