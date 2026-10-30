@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strings"
 	"text/tabwriter"
+	"unicode"
 )
 
 // TableReporter writes output as a human-readable table.
@@ -23,7 +25,7 @@ func (r *TableReporter) Write(w io.Writer, data any) error {
 		return fmt.Errorf("unmarshaling for table: %w", err)
 	}
 
-	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+	tw := tabwriter.NewWriter(&terminalWriter{writer: w}, 0, 4, 2, ' ', 0)
 
 	switch v := generic.(type) {
 	case []any:
@@ -98,6 +100,12 @@ func truncate(s string, max int) string {
 	if max <= 0 {
 		return ""
 	}
+	s = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, s)
 	r := []rune(s)
 	if len(r) <= max {
 		return s

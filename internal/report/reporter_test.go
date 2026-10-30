@@ -3,6 +3,7 @@ package report
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -341,6 +342,31 @@ func TestEscapeMD(t *testing.T) {
 	if got := escapeMD("no pipes"); got != "no pipes" {
 		t.Errorf("escapeMD(\"no pipes\") = %q, want %q", got, "no pipes")
 	}
+	got := escapeMD("heading\n# injected\x1b[2J")
+	if strings.Contains(got, "\n") || strings.Contains(got, "\x1b") || !strings.Contains(got, "<br>") {
+		t.Errorf("escapeMD() did not sanitize controls: %q", got)
+	}
+}
+
+func TestMarkdownReporter_WriteError(t *testing.T) {
+	r := &MarkdownReporter{}
+	err := r.Write(failingWriter{}, mdData{Target: "test"})
+	if err == nil || !strings.Contains(err.Error(), "write failed") {
+		t.Fatalf("Write() error = %v, want write failure", err)
+	}
+}
+
+func TestTruncateSanitizesTerminalControls(t *testing.T) {
+	got := truncate("safe\x1b[2J\nnext", 80)
+	if strings.Contains(got, "\x1b") || strings.Contains(got, "\n") {
+		t.Fatalf("truncate() left terminal controls: %q", got)
+	}
+}
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) {
+	return 0, errors.New("write failed")
 }
 
 func TestSarifLevel(t *testing.T) {

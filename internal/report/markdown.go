@@ -34,25 +34,30 @@ type mdSummary struct {
 	Low            int `json:"low"`
 }
 
-func (r *MarkdownReporter) Write(w io.Writer, data any) error {
+func (r *MarkdownReporter) Write(w io.Writer, data any) (retErr error) {
+	ew := &errorWriter{writer: w}
+	defer func() {
+		if retErr == nil {
+			retErr = ew.err
+		}
+	}()
+
 	raw, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("marshaling data for markdown: %w", err)
 	}
 
-	// Try scan-structured data first.
 	var d mdData
 	if err := json.Unmarshal(raw, &d); err == nil && d.Target != "" {
-		return writeScanMarkdown(w, d)
+		return writeScanMarkdown(ew, d)
 	}
 
-	// Fall back to generic rendering.
 	var generic any
 	if err := json.Unmarshal(raw, &generic); err != nil {
 		return fmt.Errorf("unmarshaling for markdown: %w", err)
 	}
 
-	return writeGenericMarkdown(w, generic)
+	return writeGenericMarkdown(ew, generic)
 }
 
 func writeScanMarkdown(w io.Writer, d mdData) error {
@@ -99,7 +104,7 @@ func writeGenericMarkdown(w io.Writer, data any) error {
 	case map[string]any:
 		writeMapMarkdown(w, v)
 	default:
-		_, _ = fmt.Fprintf(w, "%v\n", data)
+		_, _ = fmt.Fprintf(w, "%s\n", escapeMD(fmt.Sprintf("%v", data)))
 	}
 	return nil
 }
@@ -113,12 +118,15 @@ func writeSliceMarkdown(w io.Writer, items []any) error {
 	first, ok := items[0].(map[string]any)
 	if !ok {
 		for _, item := range items {
-			_, _ = fmt.Fprintf(w, "%v\n", item)
+			_, _ = fmt.Fprintf(w, "%s\n", escapeMD(fmt.Sprintf("%v", item)))
 		}
 		return nil
 	}
 
 	keys := sortedKeys(first)
+	for i := range keys {
+		keys[i] = escapeMD(keys[i])
+	}
 
 	// Header row.
 	_, _ = fmt.Fprintf(w, "| %s |\n", strings.Join(keys, " | "))
@@ -157,7 +165,34 @@ func writeMapMarkdown(w io.Writer, m map[string]any) {
 	}
 }
 
-// escapeMD escapes pipe characters in markdown table cells.
 func escapeMD(s string) string {
-	return strings.ReplaceAll(s, "|", "\\|")
+	replacer := strings.NewReplacer(
+		`\`, `\\`,
+		"|", `\|`,
+		"\r\n", "<br>",
+		"\n", "<br>",
+		"\r", "<br>",
+	)
+	return strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return ' '
+		}
+		return r
+	}, replacer.Replace(s))
+}
+
+type errorWriter struct {
+	writer io.Writer
+	err    error
+}
+
+func (w *errorWriter) Write(p []byte) (int, error) {
+	if w.err != nil {
+		return 0, w.err
+	}
+	n, err := w.writer.Write(p)
+	if err != nil {
+		w.err = err
+	}
+	return n, err
 }
