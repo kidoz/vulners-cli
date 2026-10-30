@@ -12,7 +12,9 @@ import (
 type mockStore struct {
 	getBulletinFn       func(ctx context.Context, id string) (*vulners.Bulletin, error)
 	putBulletinsFn      func(ctx context.Context, collection string, bulletins []vulners.Bulletin) error
+	replaceCollectionFn func(ctx context.Context, collection string, bulletins []vulners.Bulletin) error
 	searchBulletinsFn   func(ctx context.Context, query string, limit, offset int) ([]vulners.Bulletin, int, error)
+	matchBulletinsFn    func(ctx context.Context, name, version, cpe string) ([]vulners.Bulletin, error)
 	getCollectionMetaFn func(ctx context.Context) ([]cache.CollectionMeta, error)
 	getLastSyncTimeFn   func(ctx context.Context, collection string) (time.Time, error)
 	purgeFn             func(ctx context.Context) error
@@ -32,11 +34,25 @@ func (m *mockStore) PutBulletins(ctx context.Context, collection string, bulleti
 	return nil
 }
 
+func (m *mockStore) ReplaceCollection(ctx context.Context, collection string, bulletins []vulners.Bulletin) error {
+	if m.replaceCollectionFn != nil {
+		return m.replaceCollectionFn(ctx, collection, bulletins)
+	}
+	return nil
+}
+
 func (m *mockStore) SearchBulletins(ctx context.Context, query string, limit, offset int) ([]vulners.Bulletin, int, error) {
 	if m.searchBulletinsFn != nil {
 		return m.searchBulletinsFn(ctx, query, limit, offset)
 	}
 	return nil, 0, cache.ErrOfflineDataMissing
+}
+
+func (m *mockStore) MatchBulletins(ctx context.Context, name, version, cpe string) ([]vulners.Bulletin, error) {
+	if m.matchBulletinsFn != nil {
+		return m.matchBulletinsFn(ctx, name, version, cpe)
+	}
+	return nil, cache.ErrOfflineDataMissing
 }
 
 func (m *mockStore) GetCollectionMeta(ctx context.Context) ([]cache.CollectionMeta, error) {

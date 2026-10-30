@@ -22,7 +22,9 @@ type CollectionMeta struct {
 type Store interface {
 	GetBulletin(ctx context.Context, id string) (*vulners.Bulletin, error)
 	PutBulletins(ctx context.Context, collection string, bulletins []vulners.Bulletin) error
+	ReplaceCollection(ctx context.Context, collection string, bulletins []vulners.Bulletin) error
 	SearchBulletins(ctx context.Context, query string, limit, offset int) ([]vulners.Bulletin, int, error)
+	MatchBulletins(ctx context.Context, name, version, cpe string) ([]vulners.Bulletin, error)
 	GetCollectionMeta(ctx context.Context) ([]CollectionMeta, error)
 	GetLastSyncTime(ctx context.Context, collection string) (time.Time, error)
 	Purge(ctx context.Context) error
@@ -47,8 +49,16 @@ func (*NopStore) PutBulletins(context.Context, string, []vulners.Bulletin) error
 	return ErrCacheUnavailable
 }
 
+func (*NopStore) ReplaceCollection(context.Context, string, []vulners.Bulletin) error {
+	return ErrCacheUnavailable
+}
+
 func (*NopStore) SearchBulletins(context.Context, string, int, int) ([]vulners.Bulletin, int, error) {
 	return nil, 0, ErrOfflineDataMissing
+}
+
+func (*NopStore) MatchBulletins(context.Context, string, string, string) ([]vulners.Bulletin, error) {
+	return nil, ErrOfflineDataMissing
 }
 
 func (*NopStore) GetCollectionMeta(context.Context) ([]CollectionMeta, error) {

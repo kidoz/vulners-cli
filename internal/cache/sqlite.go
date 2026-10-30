@@ -89,11 +89,25 @@ func (s *SQLiteStore) GetBulletin(ctx context.Context, id string) (*vulners.Bull
 }
 
 func (s *SQLiteStore) PutBulletins(ctx context.Context, collection string, bulletins []vulners.Bulletin) error {
+	return s.putBulletins(ctx, collection, bulletins, false)
+}
+
+func (s *SQLiteStore) ReplaceCollection(ctx context.Context, collection string, bulletins []vulners.Bulletin) error {
+	return s.putBulletins(ctx, collection, bulletins, true)
+}
+
+func (s *SQLiteStore) putBulletins(ctx context.Context, collection string, bulletins []vulners.Bulletin, replace bool) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("beginning transaction: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
+
+	if replace {
+		if _, err := tx.ExecContext(ctx, "DELETE FROM bulletins WHERE collection = ?", collection); err != nil {
+			return fmt.Errorf("replacing collection %s: %w", collection, err)
+		}
+	}
 
 	stmt, err := tx.PrepareContext(ctx,
 		"INSERT OR REPLACE INTO bulletins (id, collection, data, title, synced_at) VALUES (?, ?, ?, ?, ?)")
@@ -103,23 +117,14 @@ func (s *SQLiteStore) PutBulletins(ctx context.Context, collection string, bulle
 	defer func() { _ = stmt.Close() }()
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	stored := 0
 	for _, b := range bulletins {
 		data, err := json.Marshal(b)
 		if err != nil {
-			s.logger.Warn("skipping bulletin, marshal error", "id", b.ID, "error", err)
-			continue
+			return fmt.Errorf("marshaling bulletin %s: %w", b.ID, err)
 		}
 		if _, err := stmt.ExecContext(ctx, b.ID, collection, string(data), b.Title, now); err != nil {
 			return fmt.Errorf("inserting bulletin %s: %w", b.ID, err)
 		}
-		stored++
-	}
-
-	// If every bulletin failed to persist, treat it as a failed sync rather
-	// than advancing synced_at and masking the failure as success.
-	if len(bulletins) > 0 && stored == 0 {
-		return fmt.Errorf("storing collection %s: all %d bulletins failed to marshal", collection, len(bulletins))
 	}
 
 	// Update collection metadata with the actual row count for this collection.
@@ -179,6 +184,73 @@ func (s *SQLiteStore) SearchBulletins(ctx context.Context, query string, limit, 
 	}
 
 	return results, total, rows.Err()
+}
+
+func (s *SQLiteStore) MatchBulletins(ctx context.Context, name, version, cpe string) ([]vulners.Bulletin, error) {
+	var patterns []string
+	fields := []struct{ name, value string }{{"name", name}, {"cpe", cpe}}
+	for _, field := range fields {
+		if field.value == "" {
+			continue
+		}
+		encoded, err := json.Marshal(field.value)
+		if err != nil {
+			return nil, fmt.Errorf("encoding %s match: %w", field.name, err)
+		}
+		pattern := `"` + field.name + `":` + string(encoded)
+		pattern = strings.ReplaceAll(pattern, `\`, `\\`)
+		pattern = strings.ReplaceAll(pattern, `%`, `\%`)
+		pattern = strings.ReplaceAll(pattern, `_`, `\_`)
+		patterns = append(patterns, "%"+pattern+"%")
+	}
+	if len(patterns) == 0 {
+		return nil, nil
+	}
+
+	query := "SELECT id, data FROM bulletins WHERE data LIKE ? ESCAPE '\\'"
+	args := []any{patterns[0]}
+	if len(patterns) == 2 {
+		query += " OR data LIKE ? ESCAPE '\\'"
+		args = append(args, patterns[1])
+	}
+	query += " ORDER BY id"
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("querying affected bulletins: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var results []vulners.Bulletin
+	for rows.Next() {
+		var id, data string
+		if err := rows.Scan(&id, &data); err != nil {
+			return nil, fmt.Errorf("scanning affected bulletin: %w", err)
+		}
+		var b vulners.Bulletin
+		if err := json.Unmarshal([]byte(data), &b); err != nil {
+			return nil, fmt.Errorf("decoding cached bulletin %s: %w", id, err)
+		}
+		if bulletinMatches(&b, name, version, cpe) {
+			results = append(results, b)
+		}
+	}
+	return results, rows.Err()
+}
+
+func bulletinMatches(b *vulners.Bulletin, name, version, cpe string) bool {
+	for _, affected := range b.AffectedSoftware {
+		if cpe != "" && affected.CPE == cpe {
+			return true
+		}
+		if name == "" || !strings.EqualFold(strings.TrimSpace(affected.Name), name) {
+			continue
+		}
+		affectedVersion := strings.TrimSpace(affected.Version)
+		if affectedVersion == "" || affectedVersion == "*" || affectedVersion == version {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *SQLiteStore) GetCollectionMeta(ctx context.Context) ([]CollectionMeta, error) {

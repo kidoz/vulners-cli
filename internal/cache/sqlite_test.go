@@ -144,3 +144,40 @@ func TestSQLiteStore_Purge(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, metas)
 }
+
+func TestSQLiteStore_MatchBulletins(t *testing.T) {
+	store := testStore(t)
+	ctx := context.Background()
+	bulletins := []vulners.Bulletin{
+		{ID: "CVE-MATCH", Title: "OpenSSL advisory", AffectedSoftware: []vulners.AffectedSoftware{{Name: "OpenSSL", Version: "1.0"}}},
+		{ID: "CVE-OTHER-VERSION", AffectedSoftware: []vulners.AffectedSoftware{{Name: "openssl", Version: "2.0"}}},
+		{ID: "CVE-CPE", AffectedSoftware: []vulners.AffectedSoftware{{CPE: "cpe:2.3:a:vendor:product:1.0"}}},
+	}
+	require.NoError(t, store.PutBulletins(ctx, "cve", bulletins))
+
+	results, err := store.MatchBulletins(ctx, "openssl", "1.0", "")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, "CVE-MATCH", results[0].ID)
+
+	results, err = store.MatchBulletins(ctx, "", "", "cpe:2.3:a:vendor:product:1.0")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, "CVE-CPE", results[0].ID)
+}
+
+func TestSQLiteStore_ReplaceCollectionRemovesStaleBulletins(t *testing.T) {
+	store := testStore(t)
+	ctx := context.Background()
+	require.NoError(t, store.PutBulletins(ctx, "cve", []vulners.Bulletin{{ID: "CVE-OLD"}, {ID: "CVE-KEEP"}}))
+	require.NoError(t, store.ReplaceCollection(ctx, "cve", []vulners.Bulletin{{ID: "CVE-KEEP"}}))
+
+	_, err := store.GetBulletin(ctx, "CVE-OLD")
+	assert.ErrorIs(t, err, ErrOfflineDataMissing)
+	_, err = store.GetBulletin(ctx, "CVE-KEEP")
+	require.NoError(t, err)
+	metas, err := store.GetCollectionMeta(ctx)
+	require.NoError(t, err)
+	require.Len(t, metas, 1)
+	assert.Equal(t, 1, metas[0].Count)
+}

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	vulners "github.com/kidoz/go-vulners"
 	"github.com/kidoz/vulners-cli/internal/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -76,4 +77,25 @@ func TestOfflinePurgeCmd_Error(t *testing.T) {
 	err := cmd.Run(context.Background(), store, discardLogger())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "purging offline database")
+}
+
+func TestOfflineSyncCmd_FullSyncReplacesCollection(t *testing.T) {
+	replaced := false
+	put := false
+	store := &mockStore{
+		replaceCollectionFn: func(context.Context, string, []vulners.Bulletin) error {
+			replaced = true
+			return nil
+		},
+		putBulletinsFn: func(context.Context, string, []vulners.Bulletin) error {
+			put = true
+			return nil
+		},
+	}
+	client := &mockIntelClient{}
+	cmd := OfflineSyncCmd{Collections: []string{"cve"}}
+	err := cmd.Run(context.Background(), jsonCLI(), testDeps(client), store, discardLogger())
+	require.NoError(t, err)
+	assert.True(t, replaced)
+	assert.False(t, put)
 }
