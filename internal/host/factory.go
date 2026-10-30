@@ -27,7 +27,12 @@ func NewExecutorFromURI(ctx context.Context, target string, opts ExecutorOptions
 
 	u, err := url.Parse(target)
 	if err != nil {
-		return nil, fmt.Errorf("invalid target URI: %w", err)
+		return nil, fmt.Errorf("invalid target URI")
+	}
+	if u.User != nil {
+		if _, ok := u.User.Password(); ok {
+			return nil, fmt.Errorf("passwords in target URIs are not supported; use --password-env or --ask-pass")
+		}
 	}
 
 	switch u.Scheme {
@@ -41,21 +46,16 @@ func NewExecutorFromURI(ctx context.Context, target string, opts ExecutorOptions
 }
 
 func getPassword(u *url.URL, opts ExecutorOptions) (string, error) {
-	if u.User != nil {
-		if p, ok := u.User.Password(); ok {
-			return p, nil
-		}
-	}
 	if opts.PasswordEnv != "" {
 		if p := os.Getenv(opts.PasswordEnv); p != "" {
 			return p, nil
 		}
 	}
 	if opts.AskPass {
-		fmt.Printf("Password for %s: ", u.User.Username())
+		_, _ = fmt.Fprintf(os.Stderr, "Password for %s: ", u.User.Username())
 		//nolint:unconvert,gosec // Type conversion from int to int is needed on some platforms
 		passBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
-		fmt.Println()
+		_, _ = fmt.Fprintln(os.Stderr)
 		if err != nil {
 			return "", fmt.Errorf("failed to read password: %w", err)
 		}
@@ -93,7 +93,7 @@ func createWinRMExecutor(u *url.URL, opts ExecutorOptions) (*WinRMExecutor, erro
 		return nil, err
 	}
 	if pass == "" {
-		return nil, fmt.Errorf("password is required for winrm (provide in URI, via --password-env, or --ask-pass)")
+		return nil, fmt.Errorf("password is required for winrm (use --password-env or --ask-pass)")
 	}
 
 	winrmOpts := WinRMOptions{

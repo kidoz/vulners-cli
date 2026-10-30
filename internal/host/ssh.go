@@ -17,7 +17,8 @@ import (
 
 // SSHExecutor executes commands on a remote host via SSH.
 type SSHExecutor struct {
-	client *ssh.Client
+	client    *ssh.Client
+	agentConn net.Conn
 }
 
 // SSHOptions holds the configuration for an SSH connection.
@@ -43,6 +44,13 @@ func NewSSHExecutor(opts SSHOptions) (*SSHExecutor, error) {
 	}
 
 	var authMethods []ssh.AuthMethod
+	var agentConn net.Conn
+	keepAgent := false
+	defer func() {
+		if !keepAgent && agentConn != nil {
+			_ = agentConn.Close()
+		}
+	}()
 
 	// 1. Try password if provided
 	if opts.Password != "" {
@@ -64,17 +72,9 @@ func NewSSHExecutor(opts SSHOptions) (*SSHExecutor, error) {
 
 	// 3. Try ssh-agent as a fallback
 	if socket := os.Getenv("SSH_AUTH_SOCK"); socket != "" {
-		//nolint:gosec // This is connecting to the local SSH agent socket.
-		conn, err := net.Dial("unix", socket)
-		if err == nil {
-			// The agent client does not take ownership of the socket; close it
-			// regardless of whether signers are usable.
-			defer func() { _ = conn.Close() }()
-			agentClient := agent.NewClient(conn)
-			signers, err := agentClient.Signers()
-			if err == nil && len(signers) > 0 {
-				authMethods = append(authMethods, ssh.PublicKeys(signers...))
-			}
+		if signers, conn := loadAgentSigners(socket); len(signers) > 0 {
+			agentConn = conn
+			authMethods = append(authMethods, ssh.PublicKeys(signers...))
 		}
 	}
 
@@ -115,7 +115,22 @@ func NewSSHExecutor(opts SSHOptions) (*SSHExecutor, error) {
 		return nil, fmt.Errorf("failed to dial SSH to %s: %w", addr, err)
 	}
 
-	return &SSHExecutor{client: client}, nil
+	keepAgent = true
+	return &SSHExecutor{client: client, agentConn: agentConn}, nil
+}
+
+func loadAgentSigners(socket string) ([]ssh.Signer, net.Conn) {
+	//nolint:gosec // This is connecting to the local SSH agent socket.
+	conn, err := net.Dial("unix", socket)
+	if err != nil {
+		return nil, nil
+	}
+	signers, err := agent.NewClient(conn).Signers()
+	if err != nil || len(signers) == 0 {
+		_ = conn.Close()
+		return nil, nil
+	}
+	return signers, conn
 }
 
 // Execute runs the command on the remote host over SSH.
@@ -148,10 +163,16 @@ func (e *SSHExecutor) Execute(ctx context.Context, cmd string) (string, error) {
 	}
 }
 
-// Close closes the underlying SSH connection.
+// Close closes the underlying SSH connection and agent socket.
 func (e *SSHExecutor) Close() error {
+	var err error
 	if e.client != nil {
-		return e.client.Close()
+		err = e.client.Close()
 	}
-	return nil
+	if e.agentConn != nil {
+		if agentErr := e.agentConn.Close(); err == nil {
+			err = agentErr
+		}
+	}
+	return err
 }
