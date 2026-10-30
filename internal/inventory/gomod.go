@@ -16,7 +16,10 @@ import (
 type GoModCollector struct{}
 
 func (c *GoModCollector) Collect(_ context.Context, target string) ([]model.Component, error) {
-	goModPath := filepath.Join(target, "go.mod")
+	goModPath := target
+	if filepath.Base(target) != "go.mod" {
+		goModPath = filepath.Join(target, "go.mod")
+	}
 	if _, err := os.Stat(goModPath); err != nil {
 		return nil, fmt.Errorf("go.mod not found in %s: %w", target, err)
 	}
