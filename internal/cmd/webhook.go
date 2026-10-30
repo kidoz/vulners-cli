@@ -23,7 +23,7 @@ func (c *WebhookListCmd) Run(ctx context.Context, globals *CLI, deps *Deps) erro
 		return err
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for webhook commands")
+		return usageErrorf("VULNERS_API_KEY is required for webhook commands")
 	}
 	result, err := deps.Intel.ListWebhooks(ctx)
 	if err != nil {
@@ -46,7 +46,7 @@ func (c *WebhookAddCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error
 		return err
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for webhook commands")
+		return usageErrorf("VULNERS_API_KEY is required for webhook commands")
 	}
 	result, err := deps.Intel.AddWebhook(ctx, c.Query)
 	if err != nil {
@@ -69,7 +69,7 @@ func (c *WebhookGetCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error
 		return err
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for webhook commands")
+		return usageErrorf("VULNERS_API_KEY is required for webhook commands")
 	}
 	result, err := deps.Intel.GetWebhook(ctx, c.ID)
 	if err != nil {
@@ -93,7 +93,7 @@ func (c *WebhookReadCmd) Run(ctx context.Context, globals *CLI, deps *Deps) erro
 		return err
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for webhook commands")
+		return usageErrorf("VULNERS_API_KEY is required for webhook commands")
 	}
 	result, err := deps.Intel.ReadWebhook(ctx, c.ID, c.NewestOnly)
 	if err != nil {
@@ -116,7 +116,7 @@ func (c *WebhookEnableCmd) Run(ctx context.Context, globals *CLI, deps *Deps) er
 		return err
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for webhook commands")
+		return usageErrorf("VULNERS_API_KEY is required for webhook commands")
 	}
 	if err := deps.Intel.EnableWebhook(ctx, c.ID, true); err != nil {
 		return fmt.Errorf("enabling webhook: %w", err)
@@ -138,7 +138,7 @@ func (c *WebhookDisableCmd) Run(ctx context.Context, globals *CLI, deps *Deps) e
 		return err
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for webhook commands")
+		return usageErrorf("VULNERS_API_KEY is required for webhook commands")
 	}
 	if err := deps.Intel.EnableWebhook(ctx, c.ID, false); err != nil {
 		return fmt.Errorf("disabling webhook: %w", err)
@@ -160,7 +160,7 @@ func (c *WebhookDeleteCmd) Run(ctx context.Context, globals *CLI, deps *Deps) er
 		return err
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for webhook commands")
+		return usageErrorf("VULNERS_API_KEY is required for webhook commands")
 	}
 	if err := deps.Intel.DeleteWebhook(ctx, c.ID); err != nil {
 		return fmt.Errorf("deleting webhook: %w", err)

@@ -75,6 +75,19 @@ func (e *ExitError) Error() string {
 	return fmt.Sprintf("exit code %d", int(e.Code))
 }
 
+// UsageError identifies invalid command arguments or configuration.
+type UsageError struct {
+	Err error
+}
+
+func (e *UsageError) Error() string {
+	return e.Err.Error()
+}
+
+func (e *UsageError) Unwrap() error {
+	return e.Err
+}
+
 // ParseSeverity converts a severity string to SeverityLevel (case-insensitive).
 func ParseSeverity(s string) SeverityLevel {
 	switch strings.ToLower(s) {

@@ -24,7 +24,7 @@ func (c *WinFullAuditCmd) Run(ctx context.Context, globals *CLI, deps *Deps) err
 		return fmt.Errorf("windows audit does not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for Windows audit")
+		return usageErrorf("VULNERS_API_KEY is required for Windows audit")
 	}
 
 	var items []vulners.WinAuditItem

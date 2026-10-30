@@ -38,7 +38,7 @@ func (c *SearchCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cac
 	}
 
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for search")
+		return usageErrorf("VULNERS_API_KEY is required for search")
 	}
 
 	var result any

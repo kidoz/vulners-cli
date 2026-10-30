@@ -8,7 +8,10 @@ const (
 	ExitFindings = model.ExitFindings
 )
 
-const ExitRuntimeError = model.ExitRuntimeError
+const (
+	ExitRuntimeError = model.ExitRuntimeError
+	ExitUsageError   = model.ExitUsageError
+)
 
 // CLI is the root Kong command structure.
 type CLI struct {

@@ -28,7 +28,7 @@ func (c *ScanWebCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
 		return fmt.Errorf("web scanning does not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for web scanning")
+		return usageErrorf("VULNERS_API_KEY is required for web scanning")
 	}
 	if len(c.Path) == 0 {
 		return fmt.Errorf("no paths provided for web scanning")

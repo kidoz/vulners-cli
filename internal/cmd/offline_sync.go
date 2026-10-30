@@ -23,7 +23,7 @@ const deltaThreshold = 25 * time.Hour
 
 func (c *OfflineSyncCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cache.Store, logger *slog.Logger) error {
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for offline sync")
+		return usageErrorf("VULNERS_API_KEY is required for offline sync")
 	}
 
 	// Expand comma-separated values so "--collections cve,exploit" works.

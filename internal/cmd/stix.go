@@ -20,7 +20,7 @@ func (c *StixCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
 		return fmt.Errorf("STIX export does not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for STIX export")
+		return usageErrorf("VULNERS_API_KEY is required for STIX export")
 	}
 
 	var result any

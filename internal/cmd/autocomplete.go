@@ -18,7 +18,7 @@ func (c *AutocompleteCmd) Run(ctx context.Context, globals *CLI, deps *Deps) err
 		return fmt.Errorf("autocomplete does not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for autocomplete")
+		return usageErrorf("VULNERS_API_KEY is required for autocomplete")
 	}
 
 	suggestions, err := deps.Intel.QueryAutocomplete(ctx, c.Query)

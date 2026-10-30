@@ -19,7 +19,7 @@ func (c *LibraryAuditCmd) Run(ctx context.Context, globals *CLI, deps *Deps) err
 		return fmt.Errorf("library audit does not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for audit")
+		return usageErrorf("VULNERS_API_KEY is required for audit")
 	}
 	if len(c.Purl) == 0 {
 		return fmt.Errorf("no package URLs provided for audit")

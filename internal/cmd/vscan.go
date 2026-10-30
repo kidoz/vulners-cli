@@ -17,7 +17,7 @@ type VScanCmd struct {
 
 func requireVScanner(deps *Deps) error {
 	if deps.VScanner == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for vscan commands")
+		return usageErrorf("VULNERS_API_KEY is required for vscan commands")
 	}
 	return nil
 }

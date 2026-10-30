@@ -19,7 +19,7 @@ func (c *WindowsAuditCmd) Run(ctx context.Context, globals *CLI, deps *Deps) err
 		return fmt.Errorf("windows audit does not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for audit")
+		return usageErrorf("VULNERS_API_KEY is required for audit")
 	}
 
 	result, err := deps.Intel.KBAudit(ctx, c.OS, c.KB)

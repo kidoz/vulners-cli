@@ -15,10 +15,14 @@ var scanOnlyFormats = map[model.OutputFormat]bool{
 	model.OutputCycloneDX: true,
 }
 
+func usageErrorf(format string, args ...any) error {
+	return &model.UsageError{Err: fmt.Errorf(format, args...)}
+}
+
 // validateNonScanFormat returns an error if the chosen format is scan-only.
 func validateNonScanFormat(format string) error {
 	if scanOnlyFormats[model.OutputFormat(format)] {
-		return fmt.Errorf("output format %q is only supported for scan commands; use json, table, or markdown", format)
+		return usageErrorf("output format %q is only supported for scan commands; use json, table, or markdown", format)
 	}
 	return nil
 }

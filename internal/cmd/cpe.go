@@ -36,7 +36,7 @@ func (c *CPECmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cache.
 	}
 
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for CPE search")
+		return usageErrorf("VULNERS_API_KEY is required for CPE search")
 	}
 
 	vendor := c.Vendor

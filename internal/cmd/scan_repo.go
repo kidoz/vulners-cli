@@ -97,7 +97,7 @@ func scanComponents(
 		findings, err = scanOfflineComponents(ctx, store, components, logger)
 	} else {
 		if deps.Intel == nil {
-			return fmt.Errorf("VULNERS_API_KEY is required for online scanning")
+			return usageErrorf("VULNERS_API_KEY is required for online scanning")
 		}
 		m := matcher.NewMatcher(deps.Intel, logger)
 		findings, err = m.Match(ctx, components)

@@ -50,7 +50,7 @@ func (c *ScanImageCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store 
 
 	// Online: use hybrid matching when distro is detected.
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for online scanning")
+		return usageErrorf("VULNERS_API_KEY is required for online scanning")
 	}
 
 	findings, auditMode, err := c.scanImageOnline(ctx, deps, logger, result)

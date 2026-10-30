@@ -18,7 +18,7 @@ func (c *SuggestCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error {
 		return fmt.Errorf("suggest does not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for suggest")
+		return usageErrorf("VULNERS_API_KEY is required for suggest")
 	}
 
 	suggestions, err := deps.Intel.GetSuggestion(ctx, c.Field)

@@ -47,7 +47,7 @@ func (c *CVECmd) Run(ctx context.Context, globals *CLI, deps *Deps, store cache.
 	}
 
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for CVE lookup")
+		return usageErrorf("VULNERS_API_KEY is required for CVE lookup")
 	}
 
 	bulletin, err := deps.Intel.GetBulletin(ctx, c.ID)

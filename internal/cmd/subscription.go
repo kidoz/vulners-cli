@@ -26,7 +26,7 @@ func (c *SubscriptionListCmd) Run(ctx context.Context, globals *CLI, deps *Deps)
 		return err
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for subscription commands")
+		return usageErrorf("VULNERS_API_KEY is required for subscription commands")
 	}
 	result, err := deps.Intel.ListSubscriptions(ctx)
 	if err != nil {
@@ -49,7 +49,7 @@ func (c *SubscriptionGetCmd) Run(ctx context.Context, globals *CLI, deps *Deps) 
 		return err
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for subscription commands")
+		return usageErrorf("VULNERS_API_KEY is required for subscription commands")
 	}
 	result, err := deps.Intel.GetSubscription(ctx, c.ID)
 	if err != nil {
@@ -75,7 +75,7 @@ func (c *SubscriptionCreateCmd) Run(ctx context.Context, globals *CLI, deps *Dep
 		return err
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for subscription commands")
+		return usageErrorf("VULNERS_API_KEY is required for subscription commands")
 	}
 	req := &vulners.SubscriptionRequest{
 		Name:   c.Name,
@@ -111,7 +111,7 @@ func (c *SubscriptionUpdateCmd) Run(ctx context.Context, globals *CLI, deps *Dep
 		return err
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for subscription commands")
+		return usageErrorf("VULNERS_API_KEY is required for subscription commands")
 	}
 	req := &vulners.SubscriptionRequest{
 		Name:  c.Name,
@@ -142,7 +142,7 @@ func (c *SubscriptionDeleteCmd) Run(ctx context.Context, globals *CLI, deps *Dep
 		return err
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for subscription commands")
+		return usageErrorf("VULNERS_API_KEY is required for subscription commands")
 	}
 	if err := deps.Intel.DeleteSubscription(ctx, c.ID); err != nil {
 		return fmt.Errorf("deleting subscription: %w", err)
@@ -164,7 +164,7 @@ func (c *SubscriptionEnableCmd) Run(ctx context.Context, globals *CLI, deps *Dep
 		return err
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for subscription commands")
+		return usageErrorf("VULNERS_API_KEY is required for subscription commands")
 	}
 	if err := deps.Intel.EnableSubscription(ctx, c.ID, true); err != nil {
 		return fmt.Errorf("enabling subscription: %w", err)
@@ -186,7 +186,7 @@ func (c *SubscriptionDisableCmd) Run(ctx context.Context, globals *CLI, deps *De
 		return err
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for subscription commands")
+		return usageErrorf("VULNERS_API_KEY is required for subscription commands")
 	}
 	if err := deps.Intel.EnableSubscription(ctx, c.ID, false); err != nil {
 		return fmt.Errorf("disabling subscription: %w", err)

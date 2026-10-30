@@ -20,7 +20,7 @@ func (c *SmartAuditCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error
 		return fmt.Errorf("smart audit does not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for audit")
+		return usageErrorf("VULNERS_API_KEY is required for audit")
 	}
 	if len(c.Software) == 0 {
 		return fmt.Errorf("no software descriptions provided for audit")

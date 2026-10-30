@@ -23,7 +23,7 @@ func (c *HostAuditCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error 
 		return fmt.Errorf("host audit does not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for host audit")
+		return usageErrorf("VULNERS_API_KEY is required for host audit")
 	}
 
 	var items []vulners.AuditItem

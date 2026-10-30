@@ -44,7 +44,7 @@ func main() {
 		slog.Error("failed to start", "error", err)
 		// Still call Stop to clean up partially-initialized resources (e.g. SQLite).
 		_ = app.Stop(context.Background())
-		os.Exit(int(icmd.ExitRuntimeError))
+		os.Exit(int(icmd.ExitUsageError))
 	}
 
 	if err := app.Stop(context.Background()); err != nil {
@@ -141,13 +141,20 @@ func provideCache(lc fx.Lifecycle, cfg *config.Config, logger *slog.Logger) cach
 // back to run() via panic/recover, ensuring Fx lifecycle hooks still run.
 type kongExitSignal struct{ code int }
 
+func kongExitCode(code int) int {
+	if code == 0 {
+		return int(icmd.ExitOK)
+	}
+	return int(icmd.ExitUsageError)
+}
+
 func run(cfg *config.Config, cli *icmd.CLI, deps *icmd.Deps, store cache.Store, logger *slog.Logger, lvl *slog.LevelVar) {
 	// Recover from Kong's exit calls so app.Stop() still runs.
 	// Non-Kong panics are logged and result in exit code 3 (runtime error).
 	defer func() {
 		if r := recover(); r != nil {
 			if sig, ok := r.(kongExitSignal); ok {
-				exitCode = sig.code
+				exitCode = kongExitCode(sig.code)
 				return
 			}
 			slog.Error("unexpected panic", "panic", r)
@@ -191,6 +198,12 @@ func run(cfg *config.Config, cli *icmd.CLI, deps *icmd.Deps, store cache.Store, 
 		var exitErr *model.ExitError
 		if errors.As(err, &exitErr) {
 			exitCode = int(exitErr.Code)
+			return
+		}
+		var usageErr *model.UsageError
+		if errors.As(err, &usageErr) {
+			logger.Error("invalid command configuration", "error", err)
+			exitCode = int(icmd.ExitUsageError)
 			return
 		}
 		logger.Error("command failed", "error", err)

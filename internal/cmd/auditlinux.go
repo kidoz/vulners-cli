@@ -118,7 +118,7 @@ func (c *LinuxAuditCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error
 		return fmt.Errorf("linux audit does not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for audit")
+		return usageErrorf("VULNERS_API_KEY is required for audit")
 	}
 
 	packages := normalizePackages(c.Pkg, c.Distro, c.Arch)

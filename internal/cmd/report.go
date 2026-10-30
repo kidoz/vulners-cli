@@ -28,7 +28,7 @@ func (c *ReportSummaryCmd) Run(ctx context.Context, globals *CLI, deps *Deps) er
 		return fmt.Errorf("report commands do not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for report commands")
+		return usageErrorf("VULNERS_API_KEY is required for report commands")
 	}
 
 	result, err := deps.Intel.VulnsSummaryReport(ctx, c.Limit, c.Offset)
@@ -59,7 +59,7 @@ func (c *ReportVulnsCmd) Run(ctx context.Context, globals *CLI, deps *Deps) erro
 		return fmt.Errorf("report commands do not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for report commands")
+		return usageErrorf("VULNERS_API_KEY is required for report commands")
 	}
 
 	result, err := deps.Intel.VulnsList(ctx, c.Limit, c.Offset)
@@ -90,7 +90,7 @@ func (c *ReportHostsCmd) Run(ctx context.Context, globals *CLI, deps *Deps) erro
 		return fmt.Errorf("report commands do not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for report commands")
+		return usageErrorf("VULNERS_API_KEY is required for report commands")
 	}
 
 	result, err := deps.Intel.HostVulns(ctx, c.Limit, c.Offset)
@@ -121,7 +121,7 @@ func (c *ReportScansCmd) Run(ctx context.Context, globals *CLI, deps *Deps) erro
 		return fmt.Errorf("report commands do not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for report commands")
+		return usageErrorf("VULNERS_API_KEY is required for report commands")
 	}
 
 	result, err := deps.Intel.ScanList(ctx, c.Limit, c.Offset)
@@ -149,7 +149,7 @@ func (c *ReportIPsCmd) Run(ctx context.Context, globals *CLI, deps *Deps) error 
 		return fmt.Errorf("report commands do not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for report commands")
+		return usageErrorf("VULNERS_API_KEY is required for report commands")
 	}
 
 	result, err := deps.Intel.IPSummaryReport(ctx)

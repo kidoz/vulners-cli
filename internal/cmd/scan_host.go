@@ -30,7 +30,7 @@ func (c *ScanHostCmd) Run(ctx context.Context, globals *CLI, deps *Deps, logger 
 		return fmt.Errorf("host scanning does not support offline mode")
 	}
 	if deps.Intel == nil {
-		return fmt.Errorf("VULNERS_API_KEY is required for host scanning")
+		return usageErrorf("VULNERS_API_KEY is required for host scanning")
 	}
 
 	opts := host.ExecutorOptions{

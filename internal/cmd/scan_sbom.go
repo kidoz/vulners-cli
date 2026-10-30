@@ -40,7 +40,7 @@ func (c *ScanSBOMCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store c
 		}
 	} else {
 		if deps.Intel == nil {
-			return fmt.Errorf("VULNERS_API_KEY is required for online scanning")
+			return usageErrorf("VULNERS_API_KEY is required for online scanning")
 		}
 		f, openErr := os.Open(c.File)
 		if openErr != nil {
