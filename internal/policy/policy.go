@@ -8,9 +8,9 @@ import (
 
 // Policy determines which findings matter and what exit code to return.
 type Policy struct {
-	FailOn      model.SeverityLevel
-	IgnoreIDs   map[string]bool
-	VEXStatuses map[string]string
+	FailOn        model.SeverityLevel
+	IgnoreIDs     map[string]bool
+	VEXStatements map[string][]VEXStatement
 }
 
 // normID normalizes a vulnerability identifier for case-insensitive matching.
@@ -34,13 +34,12 @@ func New(failOn string, ignoreIDs []string) *Policy {
 }
 
 // Filter removes ignored findings and returns only actionable ones.
-func (p *Policy) Filter(findings []model.Finding) []model.Finding {
+func (p *Policy) Filter(findings []model.Finding, components []model.Component) []model.Finding {
 	var filtered []model.Finding
 	for _, f := range findings {
 		if p.IgnoreIDs[normID(f.VulnID)] {
 			continue
 		}
-		// Also check aliases.
 		ignored := false
 		for _, alias := range f.Aliases {
 			if p.IgnoreIDs[normID(alias)] {
@@ -48,11 +47,7 @@ func (p *Policy) Filter(findings []model.Finding) []model.Finding {
 				break
 			}
 		}
-		if ignored {
-			continue
-		}
-		// Check VEX status — suppress "not_affected" and "fixed".
-		if vexSuppressed(p.VEXStatuses, f) {
+		if ignored || vexSuppressed(p.VEXStatements, f, components) {
 			continue
 		}
 		filtered = append(filtered, f)
@@ -60,22 +55,46 @@ func (p *Policy) Filter(findings []model.Finding) []model.Finding {
 	return filtered
 }
 
-func vexSuppressed(statuses map[string]string, f model.Finding) bool {
-	if len(statuses) == 0 {
+func vexSuppressed(statements map[string][]VEXStatement, f model.Finding, components []model.Component) bool {
+	if len(statements) == 0 {
 		return false
 	}
 
-	// Primary VulnID takes priority — if it has an explicit status, use it.
-	if status, ok := statuses[normID(f.VulnID)]; ok {
-		return status == "not_affected" || status == "fixed"
+	if primary, ok := statements[normID(f.VulnID)]; ok {
+		return statementsSuppress(primary, f, components)
 	}
-
-	// Fall back to aliases only when the primary ID has no VEX statement.
 	for _, alias := range f.Aliases {
-		if status, ok := statuses[normID(alias)]; ok {
-			if status == "not_affected" || status == "fixed" {
+		if aliasStatements, ok := statements[normID(alias)]; ok && statementsSuppress(aliasStatements, f, components) {
+			return true
+		}
+	}
+	return false
+}
+
+func statementsSuppress(statements []VEXStatement, f model.Finding, components []model.Component) bool {
+	for _, statement := range statements {
+		if statement.Status != "not_affected" && statement.Status != "fixed" {
+			continue
+		}
+		for _, product := range statement.Products {
+			if productMatches(product, f, components) {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+func productMatches(product string, f model.Finding, components []model.Component) bool {
+	if product == f.ComponentRef {
+		return true
+	}
+	for _, component := range components {
+		if component.Name+"@"+component.Version != f.ComponentRef {
+			continue
+		}
+		if product == component.PURL || product == component.CPE {
+			return true
 		}
 	}
 	return false

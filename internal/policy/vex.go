@@ -3,31 +3,44 @@ package policy
 import (
 	"encoding/json"
 	"fmt"
-	"log/slog"
+	"io"
 	"os"
 )
 
-// vexDocument represents a minimal OpenVEX document.
-type vexDocument struct {
-	Statements []vexStatement `json:"statements"`
-}
+const maxVEXDocumentSize = 64 << 20
 
-type vexStatement struct {
-	Vulnerability vexVulnerability `json:"vulnerability"`
-	Status        string           `json:"status"`
+type vexDocument struct {
+	Statements []struct {
+		Vulnerability vexVulnerability `json:"vulnerability"`
+		Status        string           `json:"status"`
+		Products      []string         `json:"products"`
+	} `json:"statements"`
 }
 
 type vexVulnerability struct {
 	Name string `json:"name"`
 }
 
-// LoadVEX parses an OpenVEX JSON document and returns a map of vuln ID → status.
-// NOTE: The OpenVEX "products" field is intentionally ignored; filtering is by
-// vulnerability ID only. Product-scoped suppression is a known limitation.
-func LoadVEX(path string) (map[string]string, error) {
-	data, err := os.ReadFile(path)
+// VEXStatement describes one product-scoped vulnerability status.
+type VEXStatement struct {
+	Status   string
+	Products []string
+}
+
+// LoadVEX parses an OpenVEX JSON document and groups statements by vulnerability ID.
+func LoadVEX(path string) (map[string][]VEXStatement, error) {
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading VEX document: %w", err)
+	}
+	defer func() { _ = f.Close() }()
+
+	data, err := io.ReadAll(io.LimitReader(f, maxVEXDocumentSize+1))
+	if err != nil {
+		return nil, fmt.Errorf("reading VEX document: %w", err)
+	}
+	if len(data) > maxVEXDocumentSize {
+		return nil, fmt.Errorf("VEX document exceeds %d bytes", maxVEXDocumentSize)
 	}
 
 	var doc vexDocument
@@ -35,19 +48,20 @@ func LoadVEX(path string) (map[string]string, error) {
 		return nil, fmt.Errorf("parsing VEX document: %w", err)
 	}
 
-	statuses := make(map[string]string, len(doc.Statements))
+	statements := make(map[string][]VEXStatement, len(doc.Statements))
 	for _, s := range doc.Statements {
-		if s.Vulnerability.Name != "" {
-			id := normID(s.Vulnerability.Name)
-			if prev, exists := statuses[id]; exists {
-				slog.Warn("duplicate VEX statement, overwriting",
-					"vulnerability", id,
-					"previous_status", prev,
-					"new_status", s.Status)
-			}
-			statuses[id] = s.Status
+		if s.Vulnerability.Name == "" {
+			return nil, fmt.Errorf("VEX statement has no vulnerability name")
 		}
+		if len(s.Products) == 0 {
+			return nil, fmt.Errorf("VEX statement for %s has no products", s.Vulnerability.Name)
+		}
+		if s.Status == "" {
+			return nil, fmt.Errorf("VEX statement for %s has no status", s.Vulnerability.Name)
+		}
+		id := normID(s.Vulnerability.Name)
+		statements[id] = append(statements[id], VEXStatement{Status: s.Status, Products: s.Products})
 	}
 
-	return statuses, nil
+	return statements, nil
 }

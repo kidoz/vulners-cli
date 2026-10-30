@@ -195,13 +195,16 @@ func scanOfflineComponents(
 }
 
 func newPolicy(globals *CLI) (*policy.Policy, error) {
+	if globals.FailOn != "" && model.ParseSeverity(globals.FailOn) == model.SeverityNone {
+		return nil, usageErrorf("invalid --fail-on value %q: use low, medium, high, or critical", globals.FailOn)
+	}
 	p := policy.New(globals.FailOn, globals.Ignore)
 	if globals.VEX != "" {
-		statuses, err := policy.LoadVEX(globals.VEX)
+		statements, err := policy.LoadVEX(globals.VEX)
 		if err != nil {
-			return nil, err
+			return nil, usageErrorf("loading VEX: %v", err)
 		}
-		p.VEXStatuses = statuses
+		p.VEXStatements = statements
 	}
 	return p, nil
 }
@@ -211,7 +214,7 @@ func finalizeScan(globals *CLI, target string, components []model.Component, fin
 	if err != nil {
 		return err
 	}
-	findings = p.Filter(findings)
+	findings = p.Filter(findings, components)
 	exitCode := p.ExitCode(findings)
 
 	var meta *ImageMeta

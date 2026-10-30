@@ -295,6 +295,8 @@ vulners scan repo . --ignore CVE-2021-44228 --ignore CVE-2023-0001
 vulners scan repo . --vex vex.json
 ```
 
+OpenVEX statements must include `products`. Suppression applies only when a product matches the scanned component's PURL, CPE, or `name@version` reference. SBOM, npm lockfile, and VEX inputs are limited to 64 MiB per file.
+
 | Exit code | Meaning |
 |---|---|
 | 0 | No findings above threshold |

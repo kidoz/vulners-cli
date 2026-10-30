@@ -7,15 +7,18 @@
     {
       "vulnerability": { "name": "CVE-2021-44228" },
       "status": "not_affected",
-      "justification": "component_not_present"
+      "justification": "component_not_present",
+      "products": ["pkg:npm/lodash@4.17.20"]
     },
     {
       "vulnerability": { "name": "CVE-2023-0001" },
-      "status": "fixed"
+      "status": "fixed",
+      "products": ["pkg:npm/lodash@4.17.20"]
     },
     {
       "vulnerability": { "name": "CVE-2023-0002" },
-      "status": "affected"
+      "status": "affected",
+      "products": ["pkg:npm/lodash@4.17.20"]
     }
   ]
 }
