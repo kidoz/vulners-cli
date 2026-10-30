@@ -46,6 +46,63 @@ func TestEnricher_Enrich_BatchFetch(t *testing.T) {
 	}
 }
 
+func TestEnricher_Enrich_UsesAliases(t *testing.T) {
+	requested := make(map[string]bool)
+	client := &mockClient{
+		getMultipleFn: func(_ context.Context, ids []string) (map[string]vulners.Bulletin, error) {
+			for _, id := range ids {
+				requested[id] = true
+			}
+			return map[string]vulners.Bulletin{
+				"CVE-2024-1111": {ID: "CVE-2024-1111", CVSS: &vulners.CVSS{Score: 9.8}},
+			}, nil
+		},
+	}
+
+	e := NewEnricher(client, slog.Default())
+	findings := []model.Finding{
+		{VulnID: "GO-2024-0001", Aliases: []string{"CVE-2024-1111"}, Severity: "unknown"},
+	}
+
+	result := e.Enrich(context.Background(), findings)
+	if !requested["CVE-2024-1111"] {
+		t.Fatal("expected the CVE alias to be requested")
+	}
+	if result[0].Severity != "critical" {
+		t.Errorf("expected severity critical from alias enrichment, got %q", result[0].Severity)
+	}
+}
+
+func TestEnricher_Enrich_PartialBatchFallsBack(t *testing.T) {
+	lookups := make(map[string]bool)
+	client := &mockClient{
+		getMultipleFn: func(context.Context, []string) (map[string]vulners.Bulletin, error) {
+			// Vulners does not know GO-* advisory IDs, so the batch omits them.
+			return map[string]vulners.Bulletin{}, nil
+		},
+		getBulletinFn: func(_ context.Context, id string) (*vulners.Bulletin, error) {
+			lookups[id] = true
+			if id != "CVE-2024-1111" {
+				return nil, fmt.Errorf("not found")
+			}
+			return &vulners.Bulletin{ID: id, CVSS: &vulners.CVSS{Score: 9.8}}, nil
+		},
+	}
+
+	e := NewEnricher(client, slog.Default())
+	findings := []model.Finding{
+		{VulnID: "GO-2024-0001", Aliases: []string{"CVE-2024-1111"}, Severity: "unknown"},
+	}
+
+	result := e.Enrich(context.Background(), findings)
+	if !lookups["CVE-2024-1111"] {
+		t.Fatal("expected individual fallback to look up the CVE alias")
+	}
+	if result[0].Severity != "critical" {
+		t.Errorf("expected severity critical after fallback, got %q", result[0].Severity)
+	}
+}
+
 func TestEnricher_Enrich_FallbackToIndividual(t *testing.T) {
 	client := &mockClient{
 		getMultipleFn: func(context.Context, []string) (map[string]vulners.Bulletin, error) {

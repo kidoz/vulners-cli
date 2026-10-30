@@ -37,19 +37,14 @@ func (e *Enricher) Enrich(ctx context.Context, findings []model.Finding) []model
 
 	// Collect all IDs to fetch in batch.
 	var allIDs []string
-	idToIndex := make(map[string][]int) // maps bulletin ID → finding indices
-	for i, f := range findings {
-		if f.VulnID == "" {
-			continue
-		}
-		ids := []string{f.VulnID}
-		ids = append(ids, f.Aliases...)
-		for _, id := range ids {
-			if !strings.HasPrefix(id, "CVE-") && !strings.HasPrefix(id, "GO-") {
+	seenIDs := make(map[string]bool)
+	for i := range findings {
+		for _, id := range candidateIDs(&findings[i]) {
+			if seenIDs[id] {
 				continue
 			}
+			seenIDs[id] = true
 			allIDs = append(allIDs, id)
-			idToIndex[id] = append(idToIndex[id], i)
 		}
 	}
 
@@ -64,17 +59,17 @@ func (e *Enricher) Enrich(ctx context.Context, findings []model.Finding) []model
 		return e.enrichIndividually(ctx, findings)
 	}
 
-	// Track which findings have been enriched.
-	enriched := make(map[int]bool)
-	for id, bulletin := range bulletinMap {
-		indices := idToIndex[id]
-		for _, i := range indices {
-			if enriched[i] {
-				continue
-			}
-			enrichFinding(&findings[i], &bulletin)
-			enriched[i] = true
+	// Batch responses omit IDs Vulners does not know, such as GO-* advisories.
+	// Retry those findings individually so their CVE aliases can be used.
+	for i := range findings {
+		if e.enrichFromMap(&findings[i], bulletinMap) {
+			continue
 		}
+		if ctx.Err() != nil {
+			e.logger.Debug("enrichment cancelled", "enriched_so_far", i)
+			break
+		}
+		e.enrichFindingIndividually(ctx, &findings[i])
 	}
 
 	// Optionally enrich with AI score for findings that lack one.
@@ -90,12 +85,16 @@ func (e *Enricher) enrichAIScores(ctx context.Context, findings []model.Finding)
 		if ctx.Err() != nil {
 			return
 		}
-		if findings[i].AIScore != nil || findings[i].VulnID == "" {
+		if findings[i].AIScore != nil {
 			continue
 		}
-		score, err := e.intel.GetAIScore(ctx, findings[i].VulnID)
+		ids := candidateIDs(&findings[i])
+		if len(ids) == 0 {
+			continue
+		}
+		score, err := e.intel.GetAIScore(ctx, ids[0])
 		if err != nil {
-			e.logger.Debug("AI score enrichment failed", "id", findings[i].VulnID, "error", err)
+			e.logger.Debug("AI score enrichment failed", "id", ids[0], "error", err)
 			continue
 		}
 		if score == nil {
@@ -106,35 +105,64 @@ func (e *Enricher) enrichAIScores(ctx context.Context, findings []model.Finding)
 }
 
 func (e *Enricher) enrichIndividually(ctx context.Context, findings []model.Finding) []model.Finding {
-	for i, f := range findings {
+	for i := range findings {
 		if ctx.Err() != nil {
 			e.logger.Debug("enrichment cancelled", "enriched_so_far", i)
 			return findings
 		}
-		if f.VulnID == "" {
-			continue
-		}
-
-		ids := []string{f.VulnID}
-		ids = append(ids, f.Aliases...)
-
-		for _, id := range ids {
-			if !strings.HasPrefix(id, "CVE-") && !strings.HasPrefix(id, "GO-") {
-				continue
-			}
-
-			bulletin, err := e.intel.GetBulletin(ctx, id)
-			if err != nil {
-				e.logger.Debug("enrichment lookup failed", "id", id, "error", err)
-				continue
-			}
-
-			enrichFinding(&findings[i], bulletin)
-			break
-		}
+		e.enrichFindingIndividually(ctx, &findings[i])
 	}
 
 	return findings
+}
+
+func (e *Enricher) enrichFindingIndividually(ctx context.Context, f *model.Finding) {
+	for _, id := range candidateIDs(f) {
+		bulletin, err := e.intel.GetBulletin(ctx, id)
+		if err != nil {
+			e.logger.Debug("enrichment lookup failed", "id", id, "error", err)
+			continue
+		}
+
+		enrichFinding(f, bulletin)
+		return
+	}
+}
+
+// candidateIDs orders enrichment lookups by preference: CVE aliases first,
+// then the govulncheck GO-* advisory ID. Vulners resolves CVEs but usually
+// does not know Go advisory IDs.
+func candidateIDs(f *model.Finding) []string {
+	ids := make([]string, 0, len(f.Aliases)+1)
+	seen := make(map[string]bool, len(f.Aliases)+1)
+
+	add := func(id string) {
+		if !strings.HasPrefix(id, "CVE-") && !strings.HasPrefix(id, "GO-") {
+			return
+		}
+		if seen[id] {
+			return
+		}
+		seen[id] = true
+		ids = append(ids, id)
+	}
+
+	for _, id := range f.Aliases {
+		add(id)
+	}
+	add(f.VulnID)
+
+	return ids
+}
+
+func (e *Enricher) enrichFromMap(f *model.Finding, bulletins map[string]vulners.Bulletin) bool {
+	for _, id := range candidateIDs(f) {
+		if bulletin, ok := bulletins[id]; ok {
+			enrichFinding(f, &bulletin)
+			return true
+		}
+	}
+	return false
 }
 
 func enrichFinding(f *model.Finding, bulletin *vulners.Bulletin) {

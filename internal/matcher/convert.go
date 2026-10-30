@@ -8,12 +8,8 @@ import (
 // BulletinToFinding converts a Vulners Bulletin into a Finding.
 func BulletinToFinding(b *vulners.Bulletin, componentRef string) model.Finding {
 	severity := "unknown"
-	var cvss float64
-	if b.CVSS3 != nil {
-		cvss = b.CVSS3.Score
-		severity = model.ScoreSeverity(cvss)
-	} else if b.CVSS != nil {
-		cvss = b.CVSS.Score
+	cvss, hasScore := bestCVSS(b)
+	if hasScore {
 		severity = model.ScoreSeverity(cvss)
 	}
 
@@ -39,4 +35,32 @@ func BulletinToFinding(b *vulners.Bulletin, componentRef string) model.Finding {
 		f.AIScore = &b.AI.Value
 	}
 	return f
+}
+
+// bestCVSS returns the most specific non-empty CVSS score. The API often
+// returns an empty cvss3 object alongside a populated cvss object.
+func bestCVSS(b *vulners.Bulletin) (float64, bool) {
+	candidates := []*vulners.CVSS{
+		cvss3Score(b.CVSS3),
+		b.CVSS4,
+		b.CVSS,
+	}
+	for _, c := range candidates {
+		if !hasCVSSData(c) {
+			continue
+		}
+		return c.Score, true
+	}
+	return 0, false
+}
+
+func cvss3Score(c *vulners.CVSS3) *vulners.CVSS {
+	if c == nil {
+		return nil
+	}
+	return &c.CVSS
+}
+
+func hasCVSSData(c *vulners.CVSS) bool {
+	return c != nil && (c.Score > 0 || c.Vector != "" || c.Severity != "")
 }
