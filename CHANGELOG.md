@@ -7,10 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-30
+
 ### Added
 
 - Reachability-aware online scanning for `vulners scan repo` via `govulncheck`, enriched with Vulners data.
 - Structured offline matching by component name, version, and CPE.
+- Affected-product matching with exact, wildcard, CPE, and relational version ranges, shared by online and offline scans.
+- Host and web scans now emit the common scan output (`components`, `findings`, `summary`); `--plan` avoids connections, credential prompts, and API calls.
+- Nested npm v1 lockfile dependencies are collected recursively and deduplicated.
+- Image scans preserve SBOM-only OS findings and use Debian package architecture from image PURLs.
 - Full offline syncs replace stored collections, removing bulletins deleted upstream.
 - Support for passing a `go.mod` file path directly to the Go inventory collector.
 
@@ -20,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Missing API keys, unsupported output formats, and invalid `--fail-on` values are usage errors on every command.
 - `--fail-on` ignores govulncheck findings that are imported but not reachable.
 - Reachable findings with unknown severity fail closed under `--fail-on`.
+- Scan inventories are capped at 10,000 components and online matching at 1,000 API search requests; overflow fails without a partial report.
 - Scanner and inventory failures now abort scans instead of being skipped: component search errors, malformed manifests, image `LinuxAudit` failures, and non-zero `govulncheck` exits.
 - Output close errors are propagated.
 - Reorganize documentation with the Diátaxis framework: tutorials, how-to guides, reference, and explanation.
@@ -31,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Attach CVE aliases from govulncheck OSV metadata so reachability findings are enriched with severity.
 - Merge duplicate govulncheck findings for the same advisory and module.
 - Prefer populated CVSS data when the API returns an empty `cvss3` object alongside `cvss`.
+- Use aggregate audit CVSS when host audit findings omit a per-vulnerability score.
+- Fail without partial findings when a version-range comparison or pagination lookup fails.
 - Offline scans fail on lookup errors instead of returning empty results.
 - Markdown tables escape backslashes, newlines, and control characters.
 
@@ -39,7 +48,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Require `0600` permissions for Unix config files that may contain an API key.
 - Reject passwords embedded in host URIs and write password prompts to stderr.
 - Sanitize terminal control characters in table and Markdown reports.
-- Limit SBOM, npm lockfile, and VEX inputs to 64 MiB.
+- Limit Go, Python, SBOM, npm lockfile, and VEX inputs to 64 MiB; cap inventories at 10,000 components and online matching at 1,000 API search requests.
+- Validate host target URIs before connecting or prompting for credentials.
+- Capture at most 64 MiB of host command and govulncheck stdout and 1 MiB of stderr; overflow cancels the command.
+- Require a WinRM username and warn when cleartext HTTP is selected.
+- Use `0600` for report files, cache databases, and SQLite sidecars, and `0750` for the `.vulners` directory.
 - Require products in OpenVEX statements and scope suppression to matching PURL, CPE, or `name@version`.
 - Address 13 standard-library vulnerabilities by updating to Go 1.26.10.
 
@@ -196,7 +209,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release with Intel, audit, scan, offline, output, and policy command families, including search/CVE/CPE/STIX, Linux/Windows/host audits, repo/dir/SBOM/image scans, offline sync, JSON/table/SARIF/HTML/CycloneDX VEX output, and `--fail-on`/`--ignore`/`--vex` policy controls.
 
-[Unreleased]: https://github.com/kidoz/vulners-cli/compare/v1.5.2...HEAD
+[Unreleased]: https://github.com/kidoz/vulners-cli/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/kidoz/vulners-cli/compare/v1.5.2...v1.6.0
 [1.5.2]: https://github.com/kidoz/vulners-cli/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/kidoz/vulners-cli/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/kidoz/vulners-cli/compare/v1.4.0...v1.5.0
