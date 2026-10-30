@@ -7,6 +7,7 @@ import (
 
 	versionutil "github.com/hashicorp/go-version"
 	vulners "github.com/kidoz/go-vulners"
+	"golang.org/x/mod/module"
 )
 
 // Matches checks exact CPEs and named-product versions, including relational ranges.
@@ -38,6 +39,8 @@ func matchesVersion(installed, boundary, operator string) (bool, error) {
 	if boundary == "*" {
 		return true, nil
 	}
+	installed = normalizeGoPseudoVersion(installed)
+	boundary = normalizeGoPseudoVersion(boundary)
 	operator = strings.ToLower(strings.TrimSpace(operator))
 	switch operator {
 	case "", "eq", "=", "==":
@@ -78,4 +81,19 @@ func comparisonMatches(cmp int, operator string) bool {
 	default:
 		return false
 	}
+}
+
+// normalizeGoPseudoVersion repairs the timestamp+revision form found in advisory
+// data. Only accept a recognized Go pseudo-version; arbitrary malformed ranges
+// still fail rather than silently hiding potentially affected packages.
+func normalizeGoPseudoVersion(version string) string {
+	candidate := version
+	if strings.Count(candidate, "+") == 2 {
+		candidate = strings.ReplaceAll(candidate, "+", "-")
+	}
+	candidate = "v" + strings.TrimPrefix(candidate, "v")
+	if module.IsPseudoVersion(candidate) {
+		return candidate
+	}
+	return version
 }

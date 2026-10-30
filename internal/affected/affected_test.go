@@ -3,6 +3,9 @@ package affected
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	vulners "github.com/kidoz/go-vulners"
 )
 
@@ -93,5 +96,33 @@ func TestMatches_UnsupportedRangesReturnError(t *testing.T) {
 		if err == nil || got {
 			t.Errorf("unsupported range must fail: %s %s %s = %v, %v", tc.installed, tc.operator, tc.boundary, got, err)
 		}
+	}
+}
+
+func TestMatches_AdvisoryGoPseudoVersion(t *testing.T) {
+	const boundary = "0.0.0+20231218163308+9d2ee975ef9f"
+	for _, tc := range []struct {
+		installed, operator string
+		want                bool
+	}{
+		{"v0.57.0", "lt", false},
+		{"v0.0.0-20231218163307-aaaaaaaaaaaa", "lt", true},
+		{"v0.0.0-20231218163308-9d2ee975ef9f", "lt", false},
+		{"v0.0.0-20231218163308-9d2ee975ef9f", "le", true},
+		{"v0.0.0-20231218163308-9d2ee975ef9f", "eq", true},
+		{"v0.0.0-20231218163309-bbbbbbbbbbbb", "lt", false},
+	} {
+		t.Run(tc.installed+tc.operator, func(t *testing.T) {
+			bulletin := &vulners.Bulletin{ID: "GHSA-45X7-PX36-X8W8", AffectedSoftware: []vulners.AffectedSoftware{{Name: "golang.org/x/crypto", Version: boundary, Operator: tc.operator}}}
+			got, err := Matches(bulletin, "golang.org/x/crypto", tc.installed, "")
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestNormalizeGoPseudoVersionPreservesOtherVersions(t *testing.T) {
+	for _, version := range []string{"1.2.3+build.1", "1.2.3+foo+bar", "0.0.0+123+abcdef", "release-final", "1:2.0"} {
+		assert.Equal(t, version, normalizeGoPseudoVersion(version))
 	}
 }
