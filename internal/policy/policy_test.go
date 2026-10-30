@@ -86,3 +86,13 @@ func TestPolicy_ExitCode(t *testing.T) {
 		})
 	}
 }
+
+func TestPolicy_ReachableUnknownSeverity(t *testing.T) {
+	for _, threshold := range []string{"low", "medium", "high", "critical"} {
+		p := New(threshold, nil)
+		f := []model.Finding{{VulnID: "GO-2026-0001", Severity: "unknown", Reachability: "reachable"}}
+		assert.Equal(t, model.ExitFindings, p.ExitCode(f))
+		f[0].Reachability = "imported"
+		assert.Equal(t, model.ExitOK, p.ExitCode(f))
+	}
+}

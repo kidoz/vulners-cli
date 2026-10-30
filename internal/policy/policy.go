@@ -112,6 +112,11 @@ func (p *Policy) ExitCode(findings []model.Finding) model.ExitCode {
 		if f.Reachability != "" && f.Reachability != "reachable" {
 			continue
 		}
+		// A reachable finding with unknown severity must fail closed: there is
+		// not enough data to prove it is below the threshold.
+		if f.Reachability == "reachable" && (f.Severity == "" || strings.EqualFold(f.Severity, "unknown")) {
+			return model.ExitFindings
+		}
 		if model.ParseSeverity(f.Severity) >= p.FailOn {
 			return model.ExitFindings
 		}
