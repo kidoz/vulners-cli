@@ -139,27 +139,6 @@ Image scanning automatically detects the OS distribution and uses specialized AP
 - **Application packages** are matched via the `SBOMAudit` API with CVSS, EPSS, AIScore, and exploit enrichment
 - Output includes `imageMeta` with distro info, package breakdown, and audit mode
 
-### VScanner (remote scanning)
-
-```bash
-# Manage projects
-vulners vscan license
-vulners vscan project list
-vulners vscan project create --name "Production" --license <license-id>
-vulners vscan project stats <project-id> --stat total_hosts,unique_cve
-vulners vscan project update <project-id> --name "Production" --license <license-id>
-
-# Manage scan tasks
-vulners vscan task list <project-id>
-vulners vscan task create <project-id> --name "Web Servers" --networks 10.0.0.0/24 --ports 1-1000 --timing normal
-vulners vscan task start <project-id> <task-id>
-vulners vscan task delete <project-id> <task-id>
-
-# Access results
-vulners vscan result list <project-id>
-vulners vscan result delete <project-id> <result-id>
-```
-
 ### Webhooks & subscriptions
 
 ```bash
@@ -205,7 +184,10 @@ Exposes tools for search, CVE lookup, CPE search, Go repo scanning, SBOM audit, 
 
 ```bash
 # Sync vulnerability data for offline use
-vulners offline sync --collections cve,exploit
+vulners offline sync --collections cve,debian
+
+# Allow more time for large collection downloads (still buffered in memory)
+VULNERS_HTTP_TIMEOUT=10m vulners offline sync --collections debian
 
 # Check offline database status
 vulners offline status
@@ -317,6 +299,8 @@ OpenVEX statements must include `products`. Suppression applies only when a prod
 
 ## Global flags
 
+`--fail-on`, `--ignore`, and `--vex` apply to `scan` commands only. Audit commands return API results without scan policy filtering.
+
 | Flag | Description |
 |---|---|
 | `--output` | Output format: `json`, `table`, `sarif`, `html`, `cyclonedx`, `markdown` (default: `json`) |
@@ -343,6 +327,7 @@ api_key: your-api-key-here
 verbose: false
 quiet: false
 offline: false
+# http_timeout: 10m  # per-request timeout; default 120s
 # max_response_size: 536870912  # bytes; raise to sync large offline collections
 ```
 
@@ -357,6 +342,7 @@ Environment variables use the `VULNERS_` prefix (e.g. `VULNERS_API_KEY`, `VULNER
 | `VULNERS_VERBOSE` / `VULNERS_QUIET` | bool (`true`/`false`/`1`/`0`) | Log verbosity |
 | `VULNERS_OFFLINE` | bool | Force offline mode |
 | `VULNERS_ENABLE_AI_SCORE` | bool | Fetch AI enrichment scores |
+| `VULNERS_HTTP_TIMEOUT` | duration (e.g. `10m`) | Per-request Vulners API timeout, including offline downloads. Zero / unset keeps 120s; negative values are rejected. |
 | `VULNERS_MAX_RESPONSE_SIZE` | int (bytes) | Raise the HTTP response-body limit (default 50 MiB). Needed to sync large offline collections (`cve`, `ubuntu`, `debian`). Non-positive / unset keeps the default. |
 | `VULNERS_CONFIG` | string | Override the config file path |
 
@@ -369,7 +355,7 @@ just build
 # Run tests (with race detector)
 just test
 
-# Run integration tests (requires VULNERS_API_KEY)
+# Run live SBOM/web API tests (requires VULNERS_API_KEY; sends test fixtures)
 just test-integration
 
 # Run linter
@@ -395,7 +381,7 @@ just clean
 cmd/vulners/main.go        Fx wiring, Kong parse, logger init
 internal/cmd/              Kong command structs
 internal/config/           Koanf v2 config loader
-internal/intel/            go-vulners wrapper + govulncheck + vscanner
+internal/intel/            go-vulners wrapper + govulncheck
 internal/cache/            SQLite offline cache (modernc.org/sqlite)
 internal/inventory/        go.mod, npm, pip, CycloneDX/SPDX, syft parsers
 internal/matcher/          Component normalization + vuln matching + enrichment

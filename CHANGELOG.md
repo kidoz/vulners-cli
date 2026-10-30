@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Configurable per-request API timeout through `VULNERS_HTTP_TIMEOUT` or YAML `http_timeout` (default 120s).
+- Opt-in live SBOM and web policy integration tests, selected by `just test-integration`.
 - Reachability-aware online scanning for `vulners scan repo` via `govulncheck`, enriched with Vulners data.
 - Structured offline matching by component name, version, and CPE.
 - Affected-product matching with exact, wildcard, CPE, and relational version ranges, shared by online and offline scans.
@@ -34,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Upgrade go-vulners to v1.5.1 so SBOM and image scans accept EPSS objects from the API; preserve nested EPSS in findings.
+- Normalize advisory Go pseudo-versions such as `0.0.0+20231218163308+9d2ee975ef9f` before matching ranges.
+- Read web CVSS scores from nested metric providers so `--fail-on` evaluates web findings correctly.
+- Remove duplicated SBOM audit error prefixes and correct offline collection examples.
 - Populate govulncheck fixed versions from the `fixed_version` field.
 - Attach CVE aliases from govulncheck OSV metadata so reachability findings are enriched with severity.
 - Merge duplicate govulncheck findings for the same advisory and module.
@@ -42,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fail without partial findings when a version-range comparison or pagination lookup fails.
 - Offline scans fail on lookup errors instead of returning empty results.
 - Markdown tables escape backslashes, newlines, and control characters.
+
+### Removed
+
+- Retired VScanner support: the `vscan` command group, client wiring, and output schemas.
 
 ### Security
 

@@ -25,9 +25,9 @@ type CLI struct {
 	OutputFile  string   `help:"Write output to file instead of stdout" name:"output-file" type:"path"`
 	MaxFindings int      `help:"Maximum findings to include in output (0 = unlimited)" default:"0" name:"max-findings"`
 	SummaryOnly bool     `help:"Output summary and top findings only (omit full lists)" name:"summary-only"`
-	FailOn      string   `help:"Fail with exit code 1 if findings at or above severity (low, medium, high, critical)" default:""`
-	Ignore      []string `help:"CVE IDs to ignore"`
-	VEX         string   `help:"Path to OpenVEX document for suppression"`
+	FailOn      string   `help:"Scan commands: fail with exit code 1 if findings at or above severity (low, medium, high, critical)" default:""`
+	Ignore      []string `help:"CVE IDs to ignore in scan commands"`
+	VEX         string   `help:"Path to OpenVEX document for suppression in scan commands"`
 	Fields      []string `help:"Select top-level JSON fields to include in output (JSON only)" name:"fields"`
 	Plan        bool     `help:"Show what a scan would do without executing it" name:"plan"`
 
@@ -47,6 +47,5 @@ type CLI struct {
 	Report       ReportCmd       `cmd:"" help:"Account-level vulnerability reports"`
 	Webhook      WebhookCmd      `cmd:"" help:"Manage search query webhooks"`
 	Subscription SubscriptionCmd `cmd:"" help:"Manage alert subscriptions"`
-	VScan        VScanCmd        `cmd:"" name:"vscan" help:"Manage VScanner remote vulnerability scans"`
 	MCP          MCPCmd          `cmd:"" name:"mcp" help:"Run as MCP (Model Context Protocol) server"`
 }

@@ -14,7 +14,7 @@ import (
 
 // OfflineSyncCmd syncs vulnerability data for offline use.
 type OfflineSyncCmd struct {
-	Collections []string `help:"Collections to sync (e.g. cve,exploit,debian)" default:"cve"`
+	Collections []string `help:"Collections to sync (e.g. cve,debian)" default:"cve"`
 	Full        bool     `help:"Force full sync even if recent data exists"`
 }
 
@@ -26,7 +26,7 @@ func (c *OfflineSyncCmd) Run(ctx context.Context, globals *CLI, deps *Deps, stor
 		return usageErrorf("VULNERS_API_KEY is required for offline sync")
 	}
 
-	// Expand comma-separated values so "--collections cve,exploit" works.
+	// Expand comma-separated values so "--collections cve,debian" works.
 	var collections []string
 	for _, raw := range c.Collections {
 		for _, part := range strings.Split(raw, ",") {

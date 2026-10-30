@@ -24,13 +24,14 @@ vulners spec --schema list
 | Audit | `audit linux`, `audit library`, `audit windows`, `audit host`, `audit smart`, `audit winaudit` | Audit explicit package, library, KB, or software inventories |
 | Scan | `scan host`, `scan repo`, `scan dir`, `scan sbom`, `scan image`, `scan web` | Discover components from a target and report findings |
 | Offline | `offline sync`, `offline status`, `offline purge` | Manage the local SQLite vulnerability cache |
-| VScanner | `vscan license`, `vscan project`, `vscan task`, `vscan result` | Manage remote VScanner projects, tasks, and results |
 | Notifications | `webhook`, `subscription` | Manage alert webhooks and subscriptions |
 | Reports | `report summary`, `report vulns`, `report hosts`, `report scans`, `report ips` | Retrieve account-level reports |
 | Integration | `mcp`, `spec`, `schema` | Run the MCP server and emit machine-readable specifications |
 | Diagnostics | `version`, `doctor` | Print build metadata and check the environment |
 
 ## Global flags
+
+`--fail-on`, `--ignore`, and `--vex` apply to `scan` commands only. Audit commands return API results without scan policy filtering.
 
 | Flag | Description |
 |---|---|
@@ -99,6 +100,7 @@ api_key: your-api-key-here
 verbose: false
 quiet: false
 offline: false
+# http_timeout: 10m  # per-request timeout; default 120s
 # max_response_size: 536870912  # bytes
 ```
 
@@ -111,6 +113,7 @@ Precedence, highest first: CLI flags > environment variables > config file > def
 | `VULNERS_VERBOSE`, `VULNERS_QUIET` | bool (`true`/`false`/`1`/`0`) | Log verbosity |
 | `VULNERS_OFFLINE` | bool | Force offline mode |
 | `VULNERS_ENABLE_AI_SCORE` | bool | Fetch AI enrichment scores |
+| `VULNERS_HTTP_TIMEOUT` | duration (e.g. `10m`) | Per-request Vulners API timeout, including offline downloads. Zero / unset keeps 120s; negative values are rejected. |
 | `VULNERS_MAX_RESPONSE_SIZE` | integer bytes | Raise the HTTP response-body limit (default 50 MiB) for large offline collections |
 | `VULNERS_CONFIG` | string | Override the config file path |
 
