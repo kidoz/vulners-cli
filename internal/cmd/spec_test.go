@@ -82,6 +82,8 @@ func TestSpecCmd_HasAllTopLevelCommands(t *testing.T) {
 		names[c.Name] = true
 	}
 
+	assert.False(t, names["vscan"], "retired VScanner must not be advertised")
+
 	expected := []string{"version", "search", "cve", "cpe", "audit", "scan", "offline", "stix", "autocomplete", "suggest", "doctor", "spec"}
 	for _, name := range expected {
 		assert.True(t, names[name], "missing command: %s", name)

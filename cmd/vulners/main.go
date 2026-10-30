@@ -100,7 +100,6 @@ func provideCLI() *icmd.CLI {
 
 func provideDeps(cfg *config.Config, logger *slog.Logger) (*icmd.Deps, error) {
 	var intelClient intel.Client
-	var vscannerClient intel.VScannerClient
 	if cfg.APIKey != "" {
 		var err error
 		intelOpts := []intel.ClientOption{intel.WithTimeout(cfg.HTTPTimeout)}
@@ -115,12 +114,8 @@ func provideDeps(cfg *config.Config, logger *slog.Logger) (*icmd.Deps, error) {
 		if err != nil {
 			return nil, fmt.Errorf("creating Vulners client: %w (check VULNERS_API_KEY)", err)
 		}
-		vscannerClient, err = intel.NewVScannerClient(cfg.APIKey, logger)
-		if err != nil {
-			return nil, fmt.Errorf("creating VScanner client: %w (check VULNERS_API_KEY)", err)
-		}
 	}
-	return &icmd.Deps{Intel: intelClient, VScanner: vscannerClient, EnableAIScore: cfg.EnableAIScore}, nil
+	return &icmd.Deps{Intel: intelClient, EnableAIScore: cfg.EnableAIScore}, nil
 }
 
 func provideCache(lc fx.Lifecycle, cfg *config.Config, logger *slog.Logger) cache.Store {

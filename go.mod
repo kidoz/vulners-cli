@@ -8,7 +8,7 @@ require (
 	github.com/anchore/syft v1.48.0
 	github.com/hashicorp/go-version v1.8.0
 	github.com/invopop/jsonschema v0.14.0
-	github.com/kidoz/go-vulners v1.3.4
+	github.com/kidoz/go-vulners v1.5.1
 	github.com/knadh/koanf/parsers/yaml v1.1.0
 	github.com/knadh/koanf/providers/confmap v1.0.0
 	github.com/knadh/koanf/providers/env v1.1.0
@@ -20,6 +20,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/fx v1.24.0
 	golang.org/x/crypto v0.57.0
+	golang.org/x/mod v0.41.0
 	golang.org/x/term v0.46.0
 	golang.org/x/vuln v1.6.0
 	modernc.org/sqlite v1.54.0
@@ -301,7 +302,6 @@ require (
 	go.yaml.in/yaml/v4 v4.0.0-rc.2 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
-	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect

@@ -6,7 +6,6 @@ import (
 
 	"github.com/invopop/jsonschema"
 	vulners "github.com/kidoz/go-vulners"
-	"github.com/kidoz/go-vulners/vscanner"
 	"github.com/kidoz/vulners-cli/internal/intel"
 	"github.com/kidoz/vulners-cli/internal/model"
 )
@@ -65,16 +64,6 @@ var commandSchemaTypes = map[string]reflect.Type{
 	"subscription-list":   reflect.TypeFor[typedIntelOutput[[]vulners.Subscription]](),
 	"subscription-get":    reflect.TypeFor[typedIntelOutput[vulners.Subscription]](),
 	"subscription-create": reflect.TypeFor[typedIntelOutput[vulners.Subscription]](),
-
-	// VScanner commands
-	"vscan-project-list":   reflect.TypeFor[typedIntelOutput[[]vscanner.Project]](),
-	"vscan-project-create": reflect.TypeFor[typedIntelOutput[vscanner.Project]](),
-	"vscan-project-stats":  reflect.TypeFor[typedIntelOutput[map[string]any]](),
-	"vscan-task-list":      reflect.TypeFor[typedIntelOutput[[]vscanner.Task]](),
-	"vscan-task-create":    reflect.TypeFor[typedIntelOutput[vscanner.Task]](),
-	"vscan-task-start":     reflect.TypeFor[typedIntelOutput[vscanner.Task]](),
-	"vscan-result-list":    reflect.TypeFor[typedIntelOutput[[]vscanner.Result]](),
-	"vscan-license":        reflect.TypeFor[typedIntelOutput[[]vscanner.License]](),
 
 	// Model types (standalone)
 	"component": reflect.TypeFor[model.Component](),
