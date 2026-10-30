@@ -41,14 +41,9 @@ func RunGovulncheck(ctx context.Context, dir string, logger *slog.Logger) ([]mod
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("starting govulncheck: %w", err)
 	}
-	waitErr := cmd.Wait()
-	if waitErr != nil {
-		// govulncheck exits non-zero when vulns are found; that's expected.
-		// But if stdout is empty, this is a real failure (e.g. killed, bad args).
-		logger.Debug("govulncheck finished", "exit_error", waitErr, "stderr", stderr.String())
-		if stdout.Len() == 0 {
-			return nil, fmt.Errorf("govulncheck failed: %w: %s", waitErr, stderr.String())
-		}
+	if err := cmd.Wait(); err != nil {
+		logger.Debug("govulncheck finished", "exit_error", err, "stderr", stderr.String())
+		return nil, fmt.Errorf("govulncheck failed: %w: %s", err, stderr.String())
 	}
 
 	return parseGovulncheckOutput(stdout.Bytes(), logger)

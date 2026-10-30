@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/kidoz/vulners-cli/internal/cache"
+	"github.com/kidoz/vulners-cli/internal/intel"
 	"github.com/kidoz/vulners-cli/internal/inventory"
 	"github.com/kidoz/vulners-cli/internal/matcher"
 	"github.com/kidoz/vulners-cli/internal/model"
@@ -65,7 +66,30 @@ func (c *ScanRepoCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store c
 	}
 
 	logger.Info("inventory collected", "components", len(components))
+	if !globals.Plan && !globals.Offline {
+		findings, scanErr := scanGoRepoOnline(ctx, deps, logger, c.Path)
+		if scanErr != nil {
+			return scanErr
+		}
+		return finalizeScan(globals, c.Path, components, findings)
+	}
 	return scanComponents(ctx, globals, deps, store, logger, c.Path, components)
+}
+
+func scanGoRepoOnline(
+	ctx context.Context,
+	deps *Deps,
+	logger *slog.Logger,
+	path string,
+) ([]model.Finding, error) {
+	if deps.Intel == nil {
+		return nil, usageErrorf("VULNERS_API_KEY is required for online scanning")
+	}
+	findings, err := intel.RunGovulncheck(ctx, path, logger)
+	if err != nil {
+		return nil, fmt.Errorf("running reachability analysis: %w", err)
+	}
+	return matcher.NewEnricher(deps.Intel, logger).Enrich(ctx, findings), nil
 }
 
 // PlanOutput describes what a scan would do without executing it.

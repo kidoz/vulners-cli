@@ -9,7 +9,6 @@ import (
 
 	"github.com/kidoz/vulners-cli/internal/cache"
 	"github.com/kidoz/vulners-cli/internal/inventory"
-	"github.com/kidoz/vulners-cli/internal/matcher"
 	"github.com/kidoz/vulners-cli/internal/model"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -158,8 +157,7 @@ func registerScanRepoTool(server *mcp.Server, deps *Deps, store cache.Store, log
 
 		var findings []model.Finding
 		if deps.Intel != nil {
-			m := matcher.NewMatcher(deps.Intel, logger)
-			findings, err = m.Match(ctx, components)
+			findings, err = scanGoRepoOnline(ctx, deps, logger, path)
 			if err != nil {
 				return mcpError(fmt.Sprintf("matching failed: %v", err)), nil, nil
 			}
