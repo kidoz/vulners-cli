@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"time"
@@ -88,6 +89,12 @@ func createSSHExecutor(u *url.URL, opts ExecutorOptions) (*SSHExecutor, error) {
 }
 
 func createWinRMExecutor(u *url.URL, opts ExecutorOptions) (*WinRMExecutor, error) {
+	if u.User.Username() == "" {
+		return nil, fmt.Errorf("WinRM requires a username; use winrms://user@host")
+	}
+	if u.Scheme == "winrm" && u.Port() != "5986" {
+		slog.Warn("WinRM connection uses HTTP without TLS; credentials and command output lack transport encryption; use winrms://")
+	}
 	pass, err := getPassword(u, opts)
 	if err != nil {
 		return nil, err
