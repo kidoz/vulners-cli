@@ -116,4 +116,8 @@ Precedence, highest first: CLI flags > environment variables > config file > def
 
 ## Input limits
 
-SBOM files, npm lockfiles, and OpenVEX documents are limited to 64 MiB per file. Larger inputs are rejected before parsing.
+Go manifests, Python requirements, SBOM files, npm lockfiles, and OpenVEX documents are limited to 64 MiB per file. Larger inputs are rejected before parsing.
+
+Go, Python, and npm collectors accept at most 10,000 components. Directory scans enforce that count across manifests. Component-based online matching permits at most 1,000 search requests across all components and result pages. Exceeding either budget returns a scan error without emitting a partial report.
+
+`scan host --plan` reports pending inventory and the planned steps without creating an executor, prompting for credentials, or contacting the audit API. `scan web --plan` reports the requested inputs without calling the API. Both plan modes work without an API key.

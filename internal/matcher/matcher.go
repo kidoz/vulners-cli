@@ -8,6 +8,7 @@ import (
 	"github.com/kidoz/vulners-cli/internal/affected"
 	"github.com/kidoz/vulners-cli/internal/intel"
 	"github.com/kidoz/vulners-cli/internal/model"
+	"github.com/kidoz/vulners-cli/internal/scanbudget"
 )
 
 // searchLimit is the page size for product-scoped bulletin searches.
@@ -26,7 +27,11 @@ func NewMatcher(intelClient intel.Client, logger *slog.Logger) *Matcher {
 
 // Match queries the Vulners API for vulnerabilities affecting the given components.
 func (m *Matcher) Match(ctx context.Context, components []model.Component) ([]model.Finding, error) {
+	if err := scanbudget.CheckComponents(len(components)); err != nil {
+		return nil, err
+	}
 	var findings []model.Finding
+	requests := 0
 
 	for _, comp := range components {
 		comp = NormalizeComponent(comp)
@@ -37,7 +42,7 @@ func (m *Matcher) Match(ctx context.Context, components []model.Component) ([]mo
 
 		m.logger.Debug("querying vulners", "component", comp.Name, "version", comp.Version)
 
-		matched, err := m.matchComponent(ctx, comp, query)
+		matched, err := m.matchComponent(ctx, comp, query, &requests)
 		if err != nil {
 			return nil, err
 		}
@@ -49,12 +54,16 @@ func (m *Matcher) Match(ctx context.Context, components []model.Component) ([]mo
 
 // matchComponent pages through product-scoped candidates; range boundaries can
 // differ from the installed version, so the query must not filter by that version.
-func (m *Matcher) matchComponent(ctx context.Context, comp model.Component, query string) ([]model.Finding, error) {
+func (m *Matcher) matchComponent(ctx context.Context, comp model.Component, query string, requests *int) ([]model.Finding, error) {
 	var findings []model.Finding
 	for offset := 0; ; {
 		if err := ctx.Err(); err != nil {
 			return nil, fmt.Errorf("search aborted: %w", err)
 		}
+		if *requests >= scanbudget.MaxSearchRequests {
+			return nil, fmt.Errorf("%w: maximum %d API search requests", scanbudget.ErrExceeded, scanbudget.MaxSearchRequests)
+		}
+		*requests += 1
 		result, err := m.intel.Search(ctx, query, searchLimit, offset)
 		if err != nil {
 			if ctx.Err() != nil {

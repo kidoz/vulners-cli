@@ -2,6 +2,7 @@ package inventory
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/kidoz/vulners-cli/internal/model"
+	"github.com/kidoz/vulners-cli/internal/scanbudget"
 )
 
 // GoModCollector collects components from go.mod and go.sum files.
@@ -28,14 +30,13 @@ func (c *GoModCollector) Collect(_ context.Context, target string) ([]model.Comp
 }
 
 func parseGoMod(path string) ([]model.Component, error) {
-	f, err := os.Open(path)
+	data, err := readFileLimited(path)
 	if err != nil {
-		return nil, fmt.Errorf("opening go.mod: %w", err)
+		return nil, fmt.Errorf("reading go.mod: %w", err)
 	}
-	defer func() { _ = f.Close() }()
 
 	var components []model.Component
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(bytes.NewReader(data))
 	inRequire := false
 
 	for scanner.Scan() {
@@ -53,12 +54,18 @@ func parseGoMod(path string) ([]model.Component, error) {
 		if inRequire {
 			comp := parseRequireLine(line, path)
 			if comp != nil {
+				if err := scanbudget.CheckComponents(len(components) + 1); err != nil {
+					return nil, err
+				}
 				components = append(components, *comp)
 			}
 		} else if strings.HasPrefix(line, "require ") {
 			rest := strings.TrimPrefix(line, "require ")
 			comp := parseRequireLine(rest, path)
 			if comp != nil {
+				if err := scanbudget.CheckComponents(len(components) + 1); err != nil {
+					return nil, err
+				}
 				components = append(components, *comp)
 			}
 		}
@@ -68,7 +75,10 @@ func parseGoMod(path string) ([]model.Component, error) {
 		return components[i].Name < components[j].Name
 	})
 
-	return components, scanner.Err()
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return components, nil
 }
 
 func parseRequireLine(line, goModPath string) *model.Component {

@@ -2,27 +2,27 @@ package inventory
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
 	"github.com/kidoz/vulners-cli/internal/model"
+	"github.com/kidoz/vulners-cli/internal/scanbudget"
 )
 
 // PipCollector collects components from requirements.txt.
 type PipCollector struct{}
 
 func (c *PipCollector) Collect(_ context.Context, target string) ([]model.Component, error) {
-	f, err := os.Open(target)
+	data, err := readFileLimited(target)
 	if err != nil {
 		return nil, fmt.Errorf("reading requirements.txt: %w", err)
 	}
-	defer func() { _ = f.Close() }()
 
 	var components []model.Component
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(bytes.NewReader(data))
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "-") {
@@ -38,6 +38,9 @@ func (c *PipCollector) Collect(_ context.Context, target string) ([]model.Compon
 		if version != "" {
 			purl += "@" + version
 		}
+		if err := scanbudget.CheckComponents(len(components) + 1); err != nil {
+			return nil, err
+		}
 		components = append(components, model.Component{
 			Type:      "pip",
 			Name:      name,
@@ -51,7 +54,10 @@ func (c *PipCollector) Collect(_ context.Context, target string) ([]model.Compon
 		return components[i].Name < components[j].Name
 	})
 
-	return components, scanner.Err()
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return components, nil
 }
 
 func parsePipRequirement(line string) (name, version string) {

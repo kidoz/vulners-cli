@@ -10,6 +10,7 @@ import (
 	"slices"
 
 	"github.com/kidoz/vulners-cli/internal/model"
+	"github.com/kidoz/vulners-cli/internal/scanbudget"
 )
 
 // manifestCollectors maps manifest filenames to their respective collectors.
@@ -42,6 +43,9 @@ func (c *MultiCollector) Collect(ctx context.Context, dir string) ([]model.Compo
 				continue
 			}
 			return nil, fmt.Errorf("collecting manifest %s: %w", target, err)
+		}
+		if err := scanbudget.CheckComponents(len(all) + len(components)); err != nil {
+			return nil, err
 		}
 		all = append(all, components...)
 	}

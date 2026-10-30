@@ -306,7 +306,7 @@ vulners scan repo . --ignore CVE-2021-44228 --ignore CVE-2023-0001
 vulners scan repo . --vex vex.json
 ```
 
-OpenVEX statements must include `products`. Suppression applies only when a product matches the scanned component's PURL, CPE, or `name@version` reference. SBOM, npm lockfile, and VEX inputs are limited to 64 MiB per file.
+OpenVEX statements must include `products`. Suppression applies only when a product matches the scanned component's PURL, CPE, or `name@version` reference. Go, Python, SBOM, npm lockfile, and VEX inputs are limited to 64 MiB per file. Manifest inventories are capped at 10,000 components, and online component matching is capped at 1,000 API search requests per scan. Host and web scans use the same policy and scan report structure; their `--plan` modes do not execute scans.
 
 | Exit code | Meaning |
 |---|---|

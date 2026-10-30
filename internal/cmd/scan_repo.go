@@ -12,6 +12,7 @@ import (
 	"github.com/kidoz/vulners-cli/internal/model"
 	"github.com/kidoz/vulners-cli/internal/policy"
 	"github.com/kidoz/vulners-cli/internal/report"
+	"github.com/kidoz/vulners-cli/internal/scanbudget"
 )
 
 // ScanRepoCmd scans a repository for vulnerabilities.
@@ -113,6 +114,9 @@ func scanComponents(
 	target string,
 	components []model.Component,
 ) error {
+	if err := scanbudget.CheckComponents(len(components)); err != nil {
+		return err
+	}
 	if globals.Plan {
 		return writePlanOutput(globals, target, components, deps)
 	}
@@ -176,6 +180,9 @@ func scanOfflineComponents(
 	components []model.Component,
 	_ *slog.Logger,
 ) ([]model.Finding, error) {
+	if err := scanbudget.CheckComponents(len(components)); err != nil {
+		return nil, err
+	}
 	meta, err := store.GetCollectionMeta(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("checking offline data: %w", err)
