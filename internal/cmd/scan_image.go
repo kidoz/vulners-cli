@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"strings"
 
 	vulners "github.com/kidoz/go-vulners"
@@ -65,37 +66,35 @@ func (c *ScanImageCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store 
 }
 
 // scanImageOnline performs hybrid matching: LinuxAudit for OS packages when distro
-// is detected, SBOMAudit for remaining packages. Returns findings and the audit mode used.
+// is detected, plus SBOMAudit for all packages. Returns findings and the audit mode used.
 func (c *ScanImageCmd) scanImageOnline(
 	ctx context.Context,
 	deps *Deps,
 	logger *slog.Logger,
 	result *inventory.SBOMResult,
 ) ([]model.Finding, string, error) {
-	osComps, appComps := splitByEcosystem(result.Components)
+	osComps, _ := splitByEcosystem(result.Components)
 	auditMode := "sbom"
 
 	// If we have a distro and OS packages, use LinuxAudit for the OS packages.
 	var findings []model.Finding
-	if result.Distro != nil && len(osComps) > 0 {
+	pkgs := formatOSPackages(osComps)
+	if result.Distro != nil && len(pkgs) > 0 {
 		logger.Info(
 			"using LinuxAudit for OS packages",
 			"distro", result.Distro.Name,
 			"version", result.Distro.Version,
 			"osPackages", len(osComps),
 		)
-		pkgs := formatOSPackages(osComps)
 		auditResult, err := deps.Intel.LinuxAudit(ctx, result.Distro.Name, result.Distro.Version, pkgs)
 		if err != nil {
 			return nil, "", fmt.Errorf("LinuxAudit for OS packages: %w", err)
 		}
 		auditMode = "hybrid"
 		findings = append(findings, convertAuditFindings(auditResult)...)
-	} else {
-		appComps = result.Components
 	}
 
-	if len(appComps) > 0 || len(osComps) == 0 {
+	if len(result.Components) > 0 {
 		sbomReader := bytes.NewReader(result.RawSBOM)
 		sbomResult, err := deps.Intel.SBOMAudit(ctx, sbomReader)
 		if err != nil {
@@ -103,18 +102,16 @@ func (c *ScanImageCmd) scanImageOnline(
 		}
 		sbomFindings := convertSBOMFindings(sbomResult.Packages)
 
-		if auditMode == "hybrid" {
-			osCompSet := make(map[string]bool, len(osComps))
-			for _, c := range osComps {
-				osCompSet[c.Name+"@"+c.Version] = true
+		seen := make(map[string]bool, len(findings))
+		for _, f := range findings {
+			seen[f.VulnID+"\x00"+f.ComponentRef] = true
+		}
+		for _, f := range sbomFindings {
+			key := f.VulnID + "\x00" + f.ComponentRef
+			if !seen[key] {
+				findings = append(findings, f)
+				seen[key] = true
 			}
-			for _, f := range sbomFindings {
-				if !osCompSet[f.ComponentRef] {
-					findings = append(findings, f)
-				}
-			}
-		} else {
-			findings = sbomFindings
 		}
 	}
 
@@ -133,11 +130,25 @@ func splitByEcosystem(components []model.Component) (osComps, appComps []model.C
 	return
 }
 
-// formatOSPackages converts components to the "name=version" format expected by LinuxAudit.
+// formatOSPackages uses host-audit package strings, including image architecture for Debian packages.
 func formatOSPackages(comps []model.Component) []string {
 	pkgs := make([]string, 0, len(comps))
 	for _, c := range comps {
-		pkgs = append(pkgs, c.Name+"="+c.Version)
+		pkg := c.Name + " " + c.Version
+		if c.Ecosystem == "deb" || c.Ecosystem == "rpm" {
+			u, err := url.Parse(c.PURL)
+			if err != nil {
+				continue
+			}
+			arch := u.Query().Get("arch")
+			if arch == "" && c.Ecosystem == "deb" {
+				continue
+			}
+			if arch != "" {
+				pkg += " " + arch
+			}
+		}
+		pkgs = append(pkgs, pkg)
 	}
 	return pkgs
 }

@@ -38,15 +38,15 @@ Offline `scan repo` cannot run reachability analysis; it uses the structured off
 
 `scan image` extracts an SBOM with the embedded `syft` library and routes packages by type:
 
-- OS packages (apk/deb/rpm) go through the distro-aware `LinuxAudit` API.
-- Application packages go through `SBOMAudit` for richer enrichment.
-- When a distro is detected, the two result sets are merged and OS-package duplicates are removed; the output records the audit mode in `imageMeta`.
+- OS packages (apk/deb/rpm) go through the distro-aware `LinuxAudit` API. Debian packages include the architecture from their image PURL; packages without that architecture use the SBOM audit.
+- The full SBOM goes through `SBOMAudit`, preserving OS findings that LinuxAudit misses.
+- Matching advisory/component pairs are deduplicated across the results; the output records the audit mode in `imageMeta`.
 
 If `LinuxAudit` fails for OS packages, the scan aborts instead of silently falling back to a less accurate path.
 
 ### Offline matching
 
-`offline sync` stores bulletins in a local SQLite database. A delta sync fetches only changes since the last sync; a full sync replaces the stored collection so bulletins removed upstream do not linger. Offline scans match components by normalized name, version, and CPE against the cached data.
+`offline sync` stores bulletins in a local SQLite database. A delta sync fetches only changes since the last sync; a full sync replaces the stored collection so bulletins removed upstream do not linger. Offline scans match components by normalized name, version, and CPE against the cached data. An absent affected version is unknown; only an explicit `*` means all versions. Online directory matching and offline matching share exact-version, wildcard, CPE, and relational range checks (`lt`/`<`, `le`/`<=`, `gt`/`>`, `ge`/`>=`). Ranges use numeric, SemVer-like version ordering, including prereleases. Unsupported range versions or operators return an error instead of a clean scan; distribution-specific version schemes are not inferred.
 
 Offline mode fails closed: if the cache is missing, unavailable, or a lookup fails, the command returns an error instead of an empty result.
 

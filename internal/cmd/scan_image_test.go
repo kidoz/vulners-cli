@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+	"io"
 	"testing"
 
 	vulners "github.com/kidoz/go-vulners"
@@ -61,10 +63,11 @@ func TestFormatOSPackages(t *testing.T) {
 	comps := []model.Component{
 		{Name: "musl", Version: "1.2.4-r2"},
 		{Name: "openssl", Version: "3.0.12-r0"},
+		{Name: "rpm-pkg", Version: "1.2-3", Ecosystem: "rpm", PURL: "pkg:rpm/rpm-pkg@1.2-3?arch=aarch64"},
 	}
 
 	pkgs := formatOSPackages(comps)
-	assert.Equal(t, []string{"musl=1.2.4-r2", "openssl=3.0.12-r0"}, pkgs)
+	assert.Equal(t, []string{"musl 1.2.4-r2", "openssl 3.0.12-r0", "rpm-pkg 1.2-3 aarch64"}, pkgs)
 }
 
 func TestConvertAuditFindings(t *testing.T) {
@@ -102,4 +105,47 @@ func TestConvertAuditFindings(t *testing.T) {
 	assert.Equal(t, 0.0, findings[1].CVSS)
 	assert.Equal(t, "none", findings[1].Severity)
 	assert.Equal(t, "zlib@1.2.11", findings[1].ComponentRef)
+}
+
+func TestScanImageOnline_PreservesSBOMOSFindings(t *testing.T) {
+	for _, withApp := range []bool{false, true} {
+		comps := []model.Component{{Name: "libc6", Version: "2.36", Ecosystem: "deb", PURL: "pkg:deb/debian/libc6@2.36?arch=arm64"}}
+		if withApp {
+			comps = append(comps, model.Component{Name: "app", Version: "1"})
+		}
+		client := &mockIntelClient{
+			linuxAuditFn: func(_ context.Context, _, _ string, pkgs []string) (*vulners.AuditResult, error) {
+				assert.Equal(t, []string{"libc6 2.36 arm64"}, pkgs)
+				return &vulners.AuditResult{Vulnerabilities: []vulners.Vulnerability{{Package: "libc6", Version: "2.36", BulletinID: "CVE-SHARED"}}}, nil
+			},
+			sbomAuditFn: func(context.Context, io.Reader) (*vulners.SBOMAuditResult, error) {
+				return &vulners.SBOMAuditResult{Packages: []vulners.SBOMPackageResult{{Package: "libc6", Version: "2.36", ApplicableAdvisories: []vulners.SBOMAdvisory{{ID: "CVE-SHARED"}, {ID: "CVE-SBOM-ONLY"}}}}}, nil
+			},
+		}
+		findings, mode, err := (&ScanImageCmd{}).scanImageOnline(context.Background(), testDeps(client), discardLogger(), &inventory.SBOMResult{Components: comps, Distro: &inventory.DistroInfo{Name: "debian", Version: "12"}})
+		require.NoError(t, err)
+		assert.Equal(t, "hybrid", mode)
+		require.Len(t, findings, 2)
+		assert.Equal(t, "CVE-SBOM-ONLY", findings[1].VulnID)
+	}
+}
+
+func TestFormatOSPackages_MissingImageArch(t *testing.T) {
+	assert.Empty(t, formatOSPackages([]model.Component{{Name: "libc6", Version: "2.36", Ecosystem: "deb"}}))
+}
+
+func TestScanImageOnline_UnknownArchUsesSBOM(t *testing.T) {
+	client := &mockIntelClient{
+		linuxAuditFn: func(context.Context, string, string, []string) (*vulners.AuditResult, error) {
+			t.Fatal("missing architecture must use SBOM")
+			return nil, nil
+		},
+		sbomAuditFn: func(context.Context, io.Reader) (*vulners.SBOMAuditResult, error) {
+			return &vulners.SBOMAuditResult{Packages: []vulners.SBOMPackageResult{{Package: "libc6", Version: "2.36", ApplicableAdvisories: []vulners.SBOMAdvisory{{ID: "CVE-SBOM"}}}}}, nil
+		},
+	}
+	findings, mode, err := (&ScanImageCmd{}).scanImageOnline(context.Background(), testDeps(client), discardLogger(), &inventory.SBOMResult{Components: []model.Component{{Name: "libc6", Version: "2.36", Ecosystem: "deb"}}, Distro: &inventory.DistroInfo{Name: "debian", Version: "12"}})
+	require.NoError(t, err)
+	assert.Equal(t, "sbom", mode)
+	require.Len(t, findings, 1)
 }
