@@ -51,6 +51,21 @@ func TestPolicy_Filter_VEXCaseInsensitive(t *testing.T) {
 	assert.Equal(t, "CVE-2023-0002", filtered[0].VulnID)
 }
 
+func TestPolicy_ExitCode_Reachability(t *testing.T) {
+	p := New("high", nil)
+
+	imported := []model.Finding{
+		{VulnID: "GO-2024-0001", Severity: "critical", Reachability: "imported"},
+	}
+	assert.Equal(t, model.ExitOK, p.ExitCode(imported), "imported findings must not fail the build")
+
+	imported[0].Reachability = "reachable"
+	assert.Equal(t, model.ExitFindings, p.ExitCode(imported), "reachable findings must fail the build")
+
+	imported[0].Reachability = ""
+	assert.Equal(t, model.ExitFindings, p.ExitCode(imported), "findings without reachability data must fail the build")
+}
+
 func TestPolicy_ExitCode(t *testing.T) {
 	tests := []struct {
 		name     string

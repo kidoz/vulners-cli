@@ -106,6 +106,12 @@ func (p *Policy) ExitCode(findings []model.Finding) model.ExitCode {
 		return model.ExitOK
 	}
 	for _, f := range findings {
+		// govulncheck reports vulnerabilities that are only imported, not
+		// reachable. They stay visible in scan output but must not fail the
+		// build unless the vulnerable code is actually reachable.
+		if f.Reachability != "" && f.Reachability != "reachable" {
+			continue
+		}
 		if model.ParseSeverity(f.Severity) >= p.FailOn {
 			return model.ExitFindings
 		}
