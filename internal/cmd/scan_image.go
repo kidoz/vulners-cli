@@ -98,7 +98,7 @@ func (c *ScanImageCmd) scanImageOnline(
 		sbomReader := bytes.NewReader(result.RawSBOM)
 		sbomResult, err := deps.Intel.SBOMAudit(ctx, sbomReader)
 		if err != nil {
-			return nil, "", fmt.Errorf("SBOM audit: %w", err)
+			return nil, "", err
 		}
 		sbomFindings := convertSBOMFindings(sbomResult.Packages)
 

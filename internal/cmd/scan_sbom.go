@@ -50,7 +50,7 @@ func (c *ScanSBOMCmd) Run(ctx context.Context, globals *CLI, deps *Deps, store c
 
 		result, auditErr := deps.Intel.SBOMAudit(ctx, f)
 		if auditErr != nil {
-			return fmt.Errorf("SBOM audit: %w", auditErr)
+			return auditErr
 		}
 		findings = convertSBOMFindings(result.Packages)
 	}
@@ -71,11 +71,6 @@ func convertSBOMFindings(packages []vulners.SBOMPackageResult) []model.Finding {
 			if adv.Metrics != nil && adv.Metrics.CVSS != nil {
 				cvss = adv.Metrics.CVSS.Score
 			}
-			var epss *float64
-			if len(adv.EPSS) > 0 && adv.EPSS[0].Epss > 0 {
-				v := adv.EPSS[0].Epss
-				epss = &v
-			}
 			var hasExploit, wildExploited bool
 			if adv.Exploitation != nil {
 				wildExploited = adv.Exploitation.WildExploited
@@ -94,7 +89,7 @@ func convertSBOMFindings(packages []vulners.SBOMPackageResult) []model.Finding {
 				VulnID:        adv.ID,
 				Severity:      model.ScoreSeverity(cvss),
 				CVSS:          cvss,
-				EPSS:          epss,
+				EPSS:          sbomEPSS(adv),
 				AIScore:       aiScore,
 				HasExploit:    hasExploit,
 				WildExploited: wildExploited,
@@ -105,4 +100,23 @@ func convertSBOMFindings(packages []vulners.SBOMPackageResult) []model.Finding {
 		}
 	}
 	return findings
+}
+
+func sbomEPSS(adv vulners.SBOMAdvisory) *float64 {
+	var score float64
+	records := [][]vulners.Epss{adv.EPSS}
+	if adv.Metrics != nil {
+		records = append(records, adv.Metrics.EPSS)
+	}
+	for _, group := range records {
+		for _, record := range group {
+			if record.Epss > score && record.Epss <= 1 {
+				score = record.Epss
+			}
+		}
+	}
+	if score == 0 {
+		return nil
+	}
+	return &score
 }

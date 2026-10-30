@@ -1,0 +1,17 @@
+{
+  "result": {
+    "data": [{
+      "package": "lodash",
+      "version": "4.17.19",
+      "fixedVersion": "4.17.21",
+      "applicableAdvisories": [{
+        "id": "CVE-TEST",
+        "metrics": {
+          "cvss": {"score": 9.8},
+          "epss": [{"cve": "CVE-TEST", "epss": 0.42, "percentile": 0.95}]
+        }
+      }]
+    }],
+    "totalPackages": 1
+  }
+}
