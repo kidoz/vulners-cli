@@ -323,7 +323,7 @@ vulners scan repo . --vex vex.json
 
 ## Configuration
 
-`vulners-cli` can be configured via a YAML file at `~/.vulners/config.yaml`:
+`vulners-cli` can be configured via a YAML file at `~/.vulners/config.yaml`. On Unix systems, this file must use mode `0600`; group- or world-readable config files are rejected because they may contain an API key.
 
 ```yaml
 api_key: your-api-key-here

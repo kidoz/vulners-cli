@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 
 	"github.com/knadh/koanf/parsers/yaml"
@@ -40,10 +41,17 @@ func Load() (*Config, error) {
 	// Load YAML config file (optional — missing file is not an error,
 	// but a malformed file that exists is).
 	cfgPath := configFilePath()
-	if _, err := os.Stat(cfgPath); err == nil {
+	info, statErr := os.Stat(cfgPath)
+	switch {
+	case statErr == nil:
+		if runtime.GOOS != "windows" && info.Mode().Perm()&0o077 != 0 {
+			return nil, fmt.Errorf("config file %s must not be accessible by group or other users; chmod 0600 it", cfgPath)
+		}
 		if err := k.Load(file.Provider(cfgPath), yaml.Parser()); err != nil {
 			return nil, fmt.Errorf("parsing config file %s: %w", cfgPath, err)
 		}
+	case !os.IsNotExist(statErr):
+		return nil, fmt.Errorf("accessing config file %s: %w", cfgPath, statErr)
 	}
 
 	// Validate typed env vars explicitly so invalid values fail loudly instead

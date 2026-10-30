@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -146,4 +147,15 @@ func TestLoad_MaxResponseSizeEnv(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "must be an integer number of bytes")
 	})
+}
+
+func TestLoad_RejectsInsecureConfigPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix permission bits are not enforced on Windows")
+	}
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("api_key: test-key\n"), 0o644)) //nolint:gosec // Negative test requires an insecure config file.
+	t.Setenv("VULNERS_CONFIG", path)
+	_, err := Load()
+	require.ErrorContains(t, err, "chmod 0600")
 }
