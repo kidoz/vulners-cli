@@ -194,6 +194,12 @@ func run(cfg *config.Config, cli *icmd.CLI, deps *icmd.Deps, store cache.Store, 
 	// NOT explicitly passed. This ensures --verbose beats quiet: true in YAML.
 	applyConfigFlags(cfg, cli, lvl)
 
+	if err := icmd.ValidateGlobals(cli); err != nil {
+		logger.Error("invalid command configuration", "error", err)
+		exitCode = int(icmd.ExitUsageError)
+		return
+	}
+
 	if err := kongCtx.Run(cli, deps, store, logger, kongCtx.Kong); err != nil {
 		var exitErr *model.ExitError
 		if errors.As(err, &exitErr) {

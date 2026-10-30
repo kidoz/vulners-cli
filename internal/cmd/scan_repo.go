@@ -206,8 +206,8 @@ func scanOfflineComponents(
 }
 
 func newPolicy(globals *CLI) (*policy.Policy, error) {
-	if globals.FailOn != "" && model.ParseSeverity(globals.FailOn) == model.SeverityNone {
-		return nil, usageErrorf("invalid --fail-on value %q: use low, medium, high, or critical", globals.FailOn)
+	if err := validateFailOn(globals.FailOn); err != nil {
+		return nil, err
 	}
 	p := policy.New(globals.FailOn, globals.Ignore)
 	if globals.VEX != "" {

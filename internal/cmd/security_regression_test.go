@@ -12,6 +12,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestValidateGlobalsFailOn(t *testing.T) {
+	require.NoError(t, ValidateGlobals(&CLI{}))
+	for _, value := range []string{"low", "medium", "high", "critical", "HIGH"} {
+		require.NoError(t, ValidateGlobals(&CLI{FailOn: value}))
+	}
+
+	err := ValidateGlobals(&CLI{FailOn: "garbage"})
+	var usageErr *model.UsageError
+	require.True(t, errors.As(err, &usageErr), "error should be a usage error: %v", err)
+}
+
 func TestNewPolicyRejectsInvalidFailOn(t *testing.T) {
 	cli := jsonCLI()
 	cli.FailOn = "garbage"
