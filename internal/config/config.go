@@ -150,8 +150,8 @@ func configFilePath() string {
 func defaultDBPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		slog.Warn("cannot determine home directory, using temp path for database", "error", err, "path", filepath.Join(os.TempDir(), "vulners.db"))
-		return filepath.Join(os.TempDir(), "vulners.db")
+		slog.Warn("cannot determine home directory; set VULNERS_DB_PATH to enable the cache", "error", err)
+		return ""
 	}
 	return filepath.Join(home, ".vulners", "vulners.db")
 }

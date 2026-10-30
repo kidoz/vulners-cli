@@ -34,9 +34,17 @@ func outputWriter(globals *CLI) (io.Writer, func() error, error) {
 	if globals.OutputFile == "" {
 		return os.Stdout, func() error { return nil }, nil
 	}
-	f, err := os.Create(globals.OutputFile)
+	f, err := os.OpenFile(globals.OutputFile, os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return nil, nil, fmt.Errorf("opening output file: %w", err)
+	}
+	if err := f.Chmod(0o600); err != nil {
+		_ = f.Close()
+		return nil, nil, fmt.Errorf("setting output file permissions: %w", err)
+	}
+	if err := f.Truncate(0); err != nil {
+		_ = f.Close()
+		return nil, nil, fmt.Errorf("truncating output file: %w", err)
 	}
 	return f, f.Close, nil
 }

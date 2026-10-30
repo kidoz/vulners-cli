@@ -25,9 +25,8 @@ type SQLiteStore struct {
 
 // NewSQLiteStore opens or creates a SQLite cache at the given path.
 func NewSQLiteStore(dbPath string, logger *slog.Logger) (*SQLiteStore, error) {
-	dir := filepath.Dir(dbPath)
-	if err := os.MkdirAll(dir, 0o750); err != nil {
-		return nil, fmt.Errorf("creating cache directory: %w", err)
+	if err := prepareCachePath(dbPath); err != nil {
+		return nil, err
 	}
 
 	db, err := sql.Open("sqlite", dbPath+"?_pragma=journal_mode(wal)&_pragma=busy_timeout(5000)")
@@ -43,11 +42,46 @@ func NewSQLiteStore(dbPath string, logger *slog.Logger) (*SQLiteStore, error) {
 		return nil, fmt.Errorf("migrating cache database: %w", err)
 	}
 
-	if err := os.Chmod(dbPath, 0o600); err != nil {
-		logger.Warn("could not set cache file permissions", "path", dbPath, "error", err)
-	}
-
 	return s, nil
+}
+
+// prepareCachePath restricts the DB before SQLite opens it. Its Unix VFS copies
+// the database mode when creating WAL and SHM files, including after recreation.
+func prepareCachePath(dbPath string) error {
+	if dbPath == "" {
+		return fmt.Errorf("cache path unavailable; set VULNERS_DB_PATH")
+	}
+	dir := filepath.Dir(dbPath)
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return fmt.Errorf("creating cache directory: %w", err)
+	}
+	// Only tighten the dedicated application directory, never an arbitrary parent.
+	if filepath.Base(dir) == ".vulners" {
+		//nolint:gosec // This is the dedicated cache directory, not a regular file.
+		if err := os.Chmod(dir, 0o750); err != nil {
+			return fmt.Errorf("setting cache directory permissions: %w", err)
+		}
+	}
+	for _, path := range []string{dbPath, dbPath + "-wal", dbPath + "-shm"} {
+		info, err := os.Lstat(path)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("checking cache file: %w", err)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("cache file must be a regular file: %s", path)
+		}
+		if err := os.Chmod(path, 0o600); err != nil {
+			return fmt.Errorf("setting cache permissions: %w", err)
+		}
+	}
+	f, err := os.OpenFile(dbPath, os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return fmt.Errorf("creating cache database: %w", err)
+	}
+	return f.Close()
 }
 
 func (s *SQLiteStore) migrate() error {

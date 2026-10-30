@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/kidoz/vulners-cli/internal/model"
@@ -78,4 +79,24 @@ func TestOutputWriter_BadPath(t *testing.T) {
 	_, _, err := outputWriter(cli)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "opening output file")
+}
+
+func TestOutputWriter_PrivatePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix permissions")
+	}
+	for _, existing := range []bool{false, true} {
+		path := filepath.Join(t.TempDir(), "report.json")
+		if existing {
+			require.NoError(t, os.WriteFile(path, []byte("old report"), 0o600))
+			require.NoError(t, os.Chmod(path, 0o644)) //nolint:gosec // Reproduce an existing world-readable report.
+		}
+		_, closeFile, err := outputWriter(&CLI{OutputFile: path})
+		require.NoError(t, err)
+		require.NoError(t, closeFile())
+		info, err := os.Stat(path)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+		assert.Zero(t, info.Size())
+	}
 }

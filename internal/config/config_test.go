@@ -159,3 +159,9 @@ func TestLoad_RejectsInsecureConfigPermissions(t *testing.T) {
 	_, err := Load()
 	require.ErrorContains(t, err, "chmod 0600")
 }
+
+func TestDefaultDBPath_NoHome(t *testing.T) {
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+	assert.Empty(t, defaultDBPath(), "missing home must not select a predictable shared temporary file")
+}

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -180,6 +181,42 @@ func TestSQLiteStore_ReplaceCollectionRemovesStaleBulletins(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, metas, 1)
 	assert.Equal(t, 1, metas[0].Count)
+}
+
+func TestSQLiteStore_PrivateFiles(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix permissions")
+	}
+	dir := filepath.Join(t.TempDir(), ".vulners")
+	require.NoError(t, os.Mkdir(dir, 0o755)) //nolint:gosec // Reproduce a pre-existing permissive directory.
+	require.NoError(t, os.Chmod(dir, 0o755)) //nolint:gosec // Ignore umask when reproducing permissive permissions.
+	path := filepath.Join(dir, "test.db")
+	store, err := NewSQLiteStore(path, slog.Default())
+	require.NoError(t, err)
+	defer func() { require.NoError(t, store.Close()) }()
+	require.NoError(t, store.PutBulletins(context.Background(), "test", []vulners.Bulletin{{ID: "test"}}))
+	info, err := os.Stat(dir)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o750), info.Mode().Perm())
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		info, err := os.Stat(path + suffix)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), suffix)
+	}
+}
+
+func TestSQLiteStore_RejectsMissingPathAndSymlinks(t *testing.T) {
+	_, err := NewSQLiteStore("", slog.Default())
+	require.Error(t, err)
+	path := filepath.Join(t.TempDir(), "cache.db")
+	target := filepath.Join(t.TempDir(), "target")
+	require.NoError(t, os.WriteFile(target, []byte("preserve"), 0o600))
+	require.NoError(t, os.Symlink(target, path))
+	_, err = NewSQLiteStore(path, slog.Default())
+	require.Error(t, err)
+	data, err := os.ReadFile(target)
+	require.NoError(t, err)
+	assert.Equal(t, "preserve", string(data))
 }
 
 func TestSQLiteStore_EmptyAffectedVersionDoesNotMatch(t *testing.T) {
