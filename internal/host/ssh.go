@@ -1,14 +1,16 @@
 package host
 
 import (
-	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/kidoz/vulners-cli/internal/boundedio"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -141,23 +143,36 @@ func (e *SSHExecutor) Execute(ctx context.Context, cmd string) (string, error) {
 	}
 	defer func() { _ = session.Close() }()
 
-	var stdout, stderr bytes.Buffer
-	session.Stdout = &stdout
-	session.Stderr = &stderr
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stdout := boundedio.NewBuffer(boundedio.StdoutLimit, cancel)
+	stderr := boundedio.NewBuffer(boundedio.StderrLimit, cancel)
+	session.Stdout = stdout
+	session.Stderr = stderr
 
 	// To properly support context cancellation via SSH, we run in a goroutine
-	done := make(chan error, 1)
+	var runErr error
+	done := make(chan struct{})
 	go func() {
-		done <- session.Run(cmd)
+		runErr = session.Run(cmd)
+		close(done)
 	}()
 
 	select {
 	case <-ctx.Done():
 		_ = session.Signal(ssh.SIGKILL)
+		_ = session.Close()
+		<-done
+		if limitErr := errors.Join(stdout.Err(), stderr.Err()); limitErr != nil {
+			return "", limitErr
+		}
 		return "", ctx.Err()
-	case err := <-done:
-		if err != nil {
-			return "", fmt.Errorf("command execution failed: %w\nCommand: %s\nStderr: %s", err, cmd, strings.TrimSpace(stderr.String()))
+	case <-done:
+		if limitErr := errors.Join(stdout.Err(), stderr.Err()); limitErr != nil {
+			return "", limitErr
+		}
+		if runErr != nil {
+			return "", fmt.Errorf("command execution failed: %w\nCommand: %s\nStderr: %s", runErr, cmd, strings.TrimSpace(stderr.String()))
 		}
 		return strings.TrimSpace(stdout.String()), nil
 	}

@@ -1,12 +1,14 @@
 package host
 
 import (
-	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/kidoz/vulners-cli/internal/boundedio"
 
 	"github.com/masterzen/winrm"
 )
@@ -57,13 +59,18 @@ func NewWinRMExecutor(opts WinRMOptions) (*WinRMExecutor, error) {
 
 // Execute runs the command on the remote host over WinRM.
 func (e *WinRMExecutor) Execute(ctx context.Context, cmd string) (string, error) {
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stdout := boundedio.NewBuffer(boundedio.StdoutLimit, cancel)
+	stderr := boundedio.NewBuffer(boundedio.StderrLimit, cancel)
 
 	// WinRM uses PowerShell. Execute via PowerShell to match local behavior.
 	psCmd := winrm.Powershell(cmd)
 
-	exitCode, err := e.client.RunWithContextWithInput(ctx, psCmd, &stdout, &stderr, nil)
+	exitCode, err := e.client.RunWithContextWithInput(ctx, psCmd, stdout, stderr, nil)
+	if limitErr := errors.Join(stdout.Err(), stderr.Err()); limitErr != nil {
+		return "", limitErr
+	}
 	if err != nil {
 		return "", fmt.Errorf("command execution failed: %w\nCommand: %s\nStderr: %s", err, cmd, strings.TrimSpace(stderr.String()))
 	}

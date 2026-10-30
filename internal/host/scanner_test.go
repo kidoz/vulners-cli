@@ -2,9 +2,12 @@ package host
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/kidoz/vulners-cli/internal/boundedio"
 
 	vulners "github.com/kidoz/go-vulners"
 )
@@ -232,5 +235,26 @@ func TestScanner_GatherWindows_SoftwareFailureKBsOnly(t *testing.T) {
 	}
 	if len(software) != 0 {
 		t.Errorf("software = %+v, want empty", software)
+	}
+}
+
+func TestScanner_OutputLimitAbortsFallbacks(t *testing.T) {
+	for _, command := range []string{"uname -s", winOSDetectCmd, winOSDetectCaptionCmd} {
+		t.Run(command, func(t *testing.T) {
+			scanner := NewScanner(&mockExecutor{errors: map[string]error{command: boundedio.ErrOutputLimit}, responses: map[string]string{winOSDetectCaptionCmd: "Microsoft Windows 11"}}, nil)
+			_, err := scanner.DetectOS(context.Background())
+			if !errors.Is(err, boundedio.ErrOutputLimit) {
+				t.Fatalf("overflow must abort detection: %v", err)
+			}
+		})
+	}
+	for _, command := range []string{winSoftwareGetPackageCmd, winSoftwareRegistryCmd} {
+		t.Run(command, func(t *testing.T) {
+			scanner := NewScanner(&mockExecutor{errors: map[string]error{command: boundedio.ErrOutputLimit}, responses: map[string]string{winKBCmd: "KB123456"}}, nil)
+			_, _, err := scanner.GatherWindows(context.Background(), &OSInfo{})
+			if !errors.Is(err, boundedio.ErrOutputLimit) {
+				t.Fatalf("overflow must not become a KB-only scan: %v", err)
+			}
+		})
 	}
 }

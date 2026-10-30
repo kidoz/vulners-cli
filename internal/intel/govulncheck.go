@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
+
+	"github.com/kidoz/vulners-cli/internal/boundedio"
 
 	"golang.org/x/vuln/scan"
 
@@ -40,15 +43,22 @@ type govulncheckMessage struct {
 func RunGovulncheck(ctx context.Context, dir string, logger *slog.Logger) ([]model.Finding, error) {
 	logger.Debug("running govulncheck", "dir", dir)
 
-	var stdout, stderr bytes.Buffer
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stdout := boundedio.NewBuffer(boundedio.StdoutLimit, cancel)
+	stderr := boundedio.NewBuffer(boundedio.StderrLimit, cancel)
 	cmd := scan.Command(ctx, "-json", "-C", dir, "./...")
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
 
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("starting govulncheck: %w", err)
 	}
-	if err := cmd.Wait(); err != nil {
+	err := cmd.Wait()
+	if limitErr := errors.Join(stdout.Err(), stderr.Err()); limitErr != nil {
+		return nil, limitErr
+	}
+	if err != nil {
 		logger.Debug("govulncheck finished", "exit_error", err, "stderr", stderr.String())
 		return nil, fmt.Errorf("govulncheck failed: %w: %s", err, stderr.String())
 	}
