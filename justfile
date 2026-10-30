@@ -15,7 +15,7 @@ test:
 
 # Run integration tests (requires VULNERS_API_KEY)
 test-integration:
-    go test -tags=integration ./...
+    go test -tags=integration -run '^TestIntegration_' -count=1 ./...
 
 # Run linter
 lint:
