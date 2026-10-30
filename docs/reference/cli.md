@@ -50,6 +50,12 @@ vulners spec --schema list
 | `--plan` | Show what a scan would do without executing it |
 | `--help`, `-h` | Show command help |
 
+## Scan output
+
+Host and web scans now use the common scan JSON structure: `schemaVersion`, `target`, `components`, `findings`, and `summary`. This replaces their earlier direct API envelopes (`command`/`data`, including web `results`); consumers must read the normalized findings. `spec --schema scan-host` and `spec --schema scan-web` describe the current structure. All scan commands apply `--fail-on`, `--ignore`, and `--vex` before reporting and deciding the exit code.
+
+For web scans, component references are `software@version` when software is supplied, otherwise `path@`; matching paths appear in finding references. Host findings use package/software references from the audit result; an advisory without a package reference uses the host target.
+
 ## Output formats
 
 | Format | Availability | Notes |

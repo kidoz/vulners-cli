@@ -26,7 +26,7 @@ func TestScanWebCmd_Happy(t *testing.T) {
 		err := cmd.Run(context.Background(), jsonCLI(), testDeps(client))
 		require.NoError(t, err)
 	})
-	assert.Contains(t, string(out), "scan web")
+	assert.Contains(t, string(out), `"findings"`)
 	assert.Contains(t, string(out), "CVE-2024-0001")
 }
 

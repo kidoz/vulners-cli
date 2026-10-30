@@ -23,9 +23,10 @@ type typedIntelOutput[T any] struct {
 // commandSchemaTypes maps command names to the reflect.Type of their output.
 var commandSchemaTypes = map[string]reflect.Type{
 	// Scan commands
-	"scan":     reflect.TypeFor[ScanOutput](),
-	"scan-web": reflect.TypeFor[typedIntelOutput[WebScanOutput]](),
-	"plan":     reflect.TypeFor[typedIntelOutput[PlanOutput]](),
+	"scan":      reflect.TypeFor[ScanOutput](),
+	"scan-web":  reflect.TypeFor[ScanOutput](),
+	"scan-host": reflect.TypeFor[ScanOutput](),
+	"plan":      reflect.TypeFor[typedIntelOutput[PlanOutput]](),
 
 	// Intel commands
 	"version":      reflect.TypeFor[typedIntelOutput[VersionInfo]](),

@@ -157,7 +157,7 @@ func formatOSPackages(comps []model.Component) []string {
 func convertAuditFindings(result *vulners.AuditResult) []model.Finding {
 	var findings []model.Finding
 	for _, v := range result.Vulnerabilities {
-		var cvss float64
+		cvss := result.CVSSScore
 		if v.CVSS != nil {
 			cvss = v.CVSS.Score
 		}

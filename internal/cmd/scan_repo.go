@@ -94,12 +94,14 @@ func scanGoRepoOnline(
 
 // PlanOutput describes what a scan would do without executing it.
 type PlanOutput struct {
-	Target         string            `json:"target"`
-	Mode           string            `json:"mode"` // "online" or "offline"
-	ComponentCount int               `json:"componentCount"`
-	Ecosystems     map[string]int    `json:"ecosystems"`
-	HasAPIKey      bool              `json:"hasApiKey"`
-	Components     []model.Component `json:"components,omitempty"`
+	Steps            []string          `json:"steps,omitempty"`
+	InventoryPending bool              `json:"inventoryPending,omitempty"`
+	Target           string            `json:"target"`
+	Mode             string            `json:"mode"` // "online" or "offline"
+	ComponentCount   int               `json:"componentCount"`
+	Ecosystems       map[string]int    `json:"ecosystems"`
+	HasAPIKey        bool              `json:"hasApiKey"`
+	Components       []model.Component `json:"components,omitempty"`
 }
 
 func scanComponents(
@@ -155,6 +157,10 @@ func writePlanOutput(globals *CLI, target string, components []model.Component, 
 		HasAPIKey:      deps.Intel != nil,
 	}
 
+	return writeScanPlan(globals, plan)
+}
+
+func writeScanPlan(globals *CLI, plan PlanOutput) error {
 	w, closer, err := outputWriter(globals)
 	if err != nil {
 		return err

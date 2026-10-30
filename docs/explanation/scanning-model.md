@@ -50,6 +50,12 @@ If `LinuxAudit` fails for OS packages, the scan aborts instead of silently falli
 
 Offline mode fails closed: if the cache is missing, unavailable, or a lookup fails, the command returns an error instead of an empty result.
 
+## Host and web scans
+
+Host and web API responses are normalized into the same finding model as repository scans. Linux and Windows host audits and web scans apply severity thresholds, ignored IDs, and product-scoped VEX statements before writing reports. Aggregate audit CVSS is used when individual audit findings omit a score.
+
+Their plan modes return before host connections, inventory commands, credential prompts, and API calls. A host plan marks inventory as pending because its components have not been collected.
+
 ## Policy
 
 `--ignore` matches vulnerability IDs case-insensitively, including aliases. `--vex` loads OpenVEX statements; each statement must list `products`, and suppression only applies when a product matches the scanned component's PURL, CPE, or `name@version`. `not_affected` and `fixed` statements suppress findings.
